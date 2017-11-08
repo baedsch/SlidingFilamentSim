@@ -24,7 +24,7 @@ writeText = True
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e4)																				
+n_steps = int(1e3)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
@@ -35,7 +35,7 @@ d = 2.
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(3)]																
+loadF = [10. for i in range(2)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				

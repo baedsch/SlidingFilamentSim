@@ -200,6 +200,7 @@ class simulation:
         #case: unbound
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
+            #wrapping in here is mandatory for force calclation
             s = h.wrapping(s, self.d[run])
         #case: bound
         else:
@@ -448,6 +449,7 @@ class simulation:
                 #~ print (p_i, p_upd, min_index, tau_min)
                 f_upd = h.force(s_upd, p_upd, self.d[run])
                 f_delta = f_upd - f_i
+                print(f_i)
 
                 #calculate number of attached heads
                 n_att = sum(h.unitizeV(p))
