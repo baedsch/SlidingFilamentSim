@@ -93,7 +93,6 @@ def step_fcn(n_elem, n_jumps, min_val, max_val, index):
     return a
 
 def detach_plot_fcn(s, bta, k):
-    sSq = s**2
     result = []
     for s_iter in s:
 

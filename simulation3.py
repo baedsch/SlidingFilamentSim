@@ -6,6 +6,7 @@ from numpy import random
 #~ import random
 import math
 import os
+import platform
 import time as tme
 import time
 import threading as th
@@ -82,10 +83,16 @@ class simulation:
         #write the stored variables into textfiles?
         self.writeText = kwargs.get('writeText', False)
         #make directory
-        directory = tme.strftime("%Y_%m_%d__%H:%M:%S_", tme.gmtime()) + self.name
+        directory = tme.strftime("%Y_%m_%d__%H;%M;%S_", tme.gmtime()) + self.name
         try:
-            os.mkdir('./res/' + directory)
-            os.chdir('res/' + directory)
+            if platform.system() == 'Windows':
+                path = kwargs.get('path', 'C:/Users/baumgartner/sharePETER/sharePETER/res/' + directory)
+                os.makedirs(path)
+                os.chdir(path)
+            if platform.system() == 'Linux':
+                path = kwargs.get('path', '/res/' + directory)
+                os.makedirs('.' + path)
+                os.chdir(path)
         except:
             print("Directory already existing, please choose unique simulation name! Otherwise data might get overwritten")
 
@@ -245,7 +252,7 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('Sum_p.png', dpi=200)
 
     def plot_f(self, run, leg=False):
@@ -266,7 +273,7 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-")
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('Sum_f.png', dpi=200)
 
     def plot_f_norm(self, run, leg=False):
@@ -287,7 +294,7 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-")
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('Sum_f.png', dpi=200)
 
     def plot_pos(self, run, leg=False):
@@ -308,7 +315,7 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-")
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('Pos.png', dpi=200)
 
     def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
@@ -330,7 +337,7 @@ class simulation:
             lab = legvar
             if leg: val = legval[run.index(r)]
             ax.scatter(self.v_axis_added[r], self.f_Sum_axis_added[r], color=color, s=5, label='{}={}'.format(lab, val))
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('Sum_f_v.png', dpi=200)
 
     def plot_v_step(self, run, leg=False, c='b'):
@@ -351,7 +358,7 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.v_axis[r], color=c, label='{}={}'.format(lab, val))
             else: ax.plot(self.v_axis[r], color=c)
-        if leg: legend = ax.legend()
+        if leg: ax.legend()
         plt.savefig('v.png', dpi=200)
 
     #run actual simulation

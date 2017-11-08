@@ -1,78 +1,64 @@
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
-import scipy.special as special
 from numpy import random
-#import random
-import math
-import os
 import time as tme
-import time
-import sys
-import threading
-import multiprocessing as mp
-import multiprocessing
-
-import helper3 as h
 from simulation3 import simulation#, Consumer#, varstep_sim
 
 #initialization
 
 #################################################################################################|
-																							    #|
-																							    #|
-mode = 'fControl' #choose from ['vControl', 'fControl', ]										#|
-option = 'poly' #for fControl choose from xy													    #|
-				#for vControl choose from 														#|
-				#						-> poly: specify coefficients							#|
-				#						-> step: specify n_elem, n_jumps, min_val, max_val		#|
-name = 'matematica_crosscheck_f=10'														#|
-																								#|
-#store data in ram / write them to text files?													#|
-s_store = False																					#|
-p_store = True																					#|
-f_store = False																					#|
-sum_f_store = True																				#|
-pos_store = True																			     	#|
-writeText = True																				#|
-																								#|
-#most important parameters																		#|
-n_heads = int(1e2)																			#|
-n_steps = int(1e4)																				#|
-d_t = 5e-3																						#|
-bta = 2.																						#|
+
+mode = 'fControl' #choose from ['vControl', 'fControl', ]
+option = 'poly' #for fControl choose from xy			
+				#for vControl choose from 													
+				#						-> poly: specify coefficients						
+				#						-> step: specify n_elem, n_jumps, min_val, max_val		
+name = 'matematica_crosscheck_f=10'													
+																								
+#store data in ram / write them to text files?													
+s_store = False																					
+p_store = True																					
+f_store = False																					
+sum_f_store = True																				
+pos_store = True																			     	
+writeText = True																				
+																								
+#most important parameters																		
+n_heads = int(1e2)																			
+n_steps = int(1e4)																				
+d_t = 5e-3																						
+bta = 2.																						
 k = 10.
-k_on = 10.																						#|
-th = 0.01																						#|
-t0 = 0.																						#|
-d = 2.																				#|
-random.seed(121155)																				#|
-																								#|
-#parameters for fControl																		    #|
-loadF = [10. for i in range(3)]																#|
-																								#|
-#parameters for vControl																		    #|
-	#-> poly option																				#|
-v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										#|
-																								#|
-	#-> step option																				#|
-#step_n_jumps = int(n_steps / 1000)															    #|
-colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												#|
-#step_n_jumps = [25.,25]																		    #|
-#step_min_val = [0., 0.05]																		#|
+k_on = 10.																						
+th = 0.01																						
+t0 = 0.																						
+d = 2.																				
+random.seed(121155)																				
+																								
+#parameters for fControl																		    
+loadF = [10. for i in range(3)]																
+																								
+#parameters for vControl																		    
+	#-> poly option																				
+v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
+																								
+	#-> step option																				
+#step_n_jumps = int(n_steps / 1000)															    
+colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
+#step_n_jumps = [25.,25]																		    
+#step_min_val = [0., 0.05]																		
 #step_max_val = [0.05, 0.2]
-step_n_jumps = [25., 25.]																		    #|
-step_min_val = [0., 0.05]																		#|
+step_n_jumps = [25., 25.]																		    
+step_min_val = [0., 0.05]																		
 step_max_val = [0.05, 0.2]
-																		#|
-#step_factors = [1, 3]																		    #|
-if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    #|
-	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")	#|																							#|
-                                    																#|
-#configure mulitprocessing																		#|
-n_cores = 8																						#|
-																								#|
-																								#|
+																		
+#step_factors = [1, 3]																		    
+if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    
+	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
+                                    																
+#configure mulitprocessing																		
+n_cores = 8																						
+																								
+																								
 #################################################################################################|
 
 time_before = tme.time()
