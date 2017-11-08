@@ -448,8 +448,8 @@ class simulation:
                 p[min_index] = p_upd
                 #~ print (p_i, p_upd, min_index, tau_min)
                 f_upd = h.force(s_upd, p_upd, self.d[run])
-                f_delta = f_upd - self.loadF[run]
-                print(f_i)
+                f_delta = f_upd - f_i
+                print(f_i, f_upd)
 
                 #calculate number of attached heads
                 n_att = sum(h.unitizeV(p))
