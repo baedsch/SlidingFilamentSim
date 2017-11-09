@@ -24,7 +24,7 @@ writeText = True
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e3)																				
+n_steps = int(1e4)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.

@@ -422,8 +422,9 @@ class simulation:
                 pos += displ
             elif self.mode[run] == 'fControl':
                 #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
-                s_mat = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run])
-                k_plus_mat = h.k_plusV(s_mat, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
+                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run])
+#                print(s_mat_w)
+                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
                 k_plus_sum = k_plus_mat.sum(axis=1)
                 k_min = h.k_minV(s, p, self.bta[run], self.k[run])
                 tau_p = np.array(h.tauV(rand01_plus[i], k_plus_sum))
@@ -448,8 +449,14 @@ class simulation:
                 p[min_index] = p_upd
                 #~ print (p_i, p_upd, min_index, tau_min)
                 f_upd = h.force(s_upd, p_upd, self.d[run])
-                f_delta = f_upd - f_i
-                print(f_i, f_upd)
+#                f_delta = f_upd - f_i
+                f = h.forceV(s, p, self.d[run])
+#                print(f_i, f_upd)
+#                print('loadF')
+#                print(self.loadF[run])
+                f_delta = sum(f) - self.loadF[run]
+#                print('fdelta')
+#                print(f_delta)
 
                 #calculate number of attached heads
                 n_att = sum(h.unitizeV(p))
