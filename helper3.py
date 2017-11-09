@@ -52,7 +52,7 @@ def k_min(s, p, bta, k):
         return 100000000000000
 k_minV = np.vectorize(k_min)
 
-#attaching rate() to be used with map fcn
+#attaching rate (+V) to be used with map fcn, either feed already wrapped s in or set w=True!
 def k_plus(s, p, d, bta, k, k_on,  w=False):
     if w: s = wrapping(s, d)
     pU = unitize(p)
@@ -63,6 +63,20 @@ def k_plus(s, p, d, bta, k, k_on,  w=False):
 
     return (1 - pU) * gaussianInt
 k_plusV = np.vectorize(k_plus)
+
+#attaching rate sum, either feed already wrapped s in or set w=True!
+def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
+    if w: s = wrapping(s, d)
+    pU = unitize(p)
+    b = np.sqrt(bta)
+    c = .5
+    res = 0
+    for i in [- n_neighbours + z for z in range(2 * n_neighbours + 1)]:
+        #solution of gaussian integral
+        res += .5 * k_on * ( - special.erf(b * (s + (i * d) - c)) + special.erf(b * (s + + (i * d) + c)))
+
+    return (1 - pU) * res
+k_plus_sumV = np.vectorize(k_plus_sum)
 
 #returns the waiting time until reaction occurs
 def tau(r, k):
@@ -116,17 +130,17 @@ def plot_detach():
     plt.show()
 
 def plot_attach():
-    bta = 0.6
+    bta = 2.
     k = 10
     k_on  = 10.
-    X = np.linspace(-10., 10., 256)
-    D = k_plus(X, 0, bta, k, k_on)
+    X = np.linspace(-1., 1., 2560)
+    D = k_plus_sum(X, 0, 2, bta, k, k_on,5,)
     plt.figure(figsize=(8,6), dpi=80)
     plt.subplot(111)
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-
+plot_attach()
 #find the number of relevant neighbours up to arbitrary theshold
 def find_neighbours(th, d, bta, k, k_on):
     p = 0

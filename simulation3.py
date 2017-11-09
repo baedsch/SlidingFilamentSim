@@ -43,14 +43,14 @@ class simulation:
         if not kwargs.get('option', '') in ['poly', 'step', 'const', '']: raise ValueError('Wrong option chosen')
         self.args_passed = [kwargs]
 
-        self.d = [kwargs.get('d', 1.)]
-        self.d_t = [kwargs.get('d_t', 1e-3)]
+        self.d = [kwargs.get('d', 2.)]
+        self.d_t = [kwargs.get('d_t', 5e-3)]
         self.seed = [kwargs.get('seed', False)]
 
-        self.loadF = [kwargs.get('loadF', 200.)]
+        self.loadF = [kwargs.get('loadF', 20.)]
         self.bta = [kwargs.get('bta', 2.)]
-        self.k = [kwargs.get('k', 2.)]
-        self.k_on = [kwargs.get('k_on', 2.)]
+        self.k = [kwargs.get('k', 10.)]
+        self.k_on = [kwargs.get('k_on', 10.)]
         self.th = [kwargs.get('th', 0.0001)]
         #values should look like this: [c_0, c_1, ..., c_n+1] for n^th polynomial
         self.v_Coeff = [kwargs.get('v_Coeff', [0])]
