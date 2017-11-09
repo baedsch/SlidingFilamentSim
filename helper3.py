@@ -49,7 +49,7 @@ def k_min(s, p, bta, k):
         return pU * np.exp(-(bta * sSq) / (1 + k)) * np.cosh(bta * s)
 
     else:
-        return 100000000000000
+        return 1e50
 k_minV = np.vectorize(k_min)
 
 #attaching rate (+V) to be used with map fcn, either feed already wrapped s in or set w=True!
@@ -77,6 +77,13 @@ def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
 
     return (1 - pU) * res
 k_plus_sumV = np.vectorize(k_plus_sum)
+
+#get minimum and maximum value of funktion within subintervals
+def min_max(n, inter, fcn):
+    res = {}
+    for i in [- inter / 2 + z * inter / (2 * n) for z in range(2 * n + 1)]:
+        sdfsdf
+    return res
 
 #returns the waiting time until reaction occurs
 def tau(r, k):
@@ -133,8 +140,8 @@ def plot_attach():
     bta = 2.
     k = 10
     k_on  = 10.
-    X = np.linspace(-1., 1., 2560)
-    D = k_plus_sum(X, 0, 2, bta, k, k_on,5,)
+    X = np.linspace(-3.,3., 2560)
+    D = k_plus_sum(X, 0, 2, bta, k, k_on,2,w=True) - k_plus_sum(X, 0, 2, bta, k, k_on,1,w=True)
     plt.figure(figsize=(8,6), dpi=80)
     plt.subplot(111)
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
