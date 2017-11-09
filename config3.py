@@ -35,7 +35,7 @@ d = 2.
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(2)]																
+loadF = [10. for i in range(10)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				
