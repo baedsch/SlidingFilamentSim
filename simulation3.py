@@ -198,12 +198,16 @@ class simulation:
     #main update method for mode==fControl
     #K_plus is the row of the k_plus_matrix corresponding to the updated head
     #K_sum is the sum of this row
-    def update_fC(self, s, p, K_plus, K_sum, run):
+    def update_fC(self, s, p, d, K_plus, K_sum, run):
         #case: unbound
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
             #wrapping in here is mandatory for force calclation
-            s = h.wrapping(s, self.d[run])
+            s = h.wrapping(s, self.d[run])#############################################################################
+            if p > 0: s += (p - 1) * d
+            elif p < 0: s += p * d
+            else: raise ValueError("something wrong with p")
+        
         #case: bound
         else:
             p = 0
@@ -465,7 +469,7 @@ class simulation:
                 s_i, p_i = s[min_index], p[min_index]
                 f_i = h.force(s_i, p_i, self.d[run])
                     #in case of binding, s gets wrapped
-                s_upd, p_upd = self.update_fC(s_i, p_i, k_plus_mat[min_index], k_plus_sum[min_index], run)
+                s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_mat[min_index], k_plus_sum[min_index], run)
                 s[min_index] = s_upd
                 p[min_index] = p_upd
                 #~ print (p_i, p_upd, min_index, tau_min)

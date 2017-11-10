@@ -78,13 +78,27 @@ def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     return (1 - pU) * res
 k_plus_sumV = np.vectorize(k_plus_sum)
 
-#get minimum and maximum value of funktion within subintervals
-def min_max(n, inter, fcn):
+#get minimum and maximum value of k_plus_sum within subintervals
+def min_max_plus(n, d, bta, k, k_on, n_neighbours):
     res = {}
-    for i in [- inter / 2 + z * inter / (2 * n) for z in range(2 * n + 1)]:
-        sdfsdf
+    varialbe_values = [- d / 2 + z * d / (2 * n) for z in range(2 * n + 1)]
+    f_values = [k_plus_sum(i, 0, d, bta, k, k_on, n_neighbours) for i in varialbe_values]
+    for i in range(len(varialbe_values) - 1):
+        res[varialbe_values[i]] = sorted([f_values[i], f_values[i + 1]])
+    
     return res
 
+#get minimum and maximum value of k_min within subintervals
+def min_max_min(n, bta, k):
+    res = {}
+    d = (1 + k)
+    varialbe_values = [- d / 2 + z * d / (2 * n) for z in range(2 * n + 1)]
+    f_values = [k_min(i, 1, bta, k) for i in varialbe_values]
+    for i in range(len(varialbe_values) - 1):
+        res[varialbe_values[i]] = sorted([f_values[i], f_values[i + 1]])
+    
+    return res
+print(min_max_min(10,2,10))
 #returns the waiting time until reaction occurs
 def tau(r, k):
     if k == 0: return 0.
@@ -121,7 +135,7 @@ def detach_plot_fcn(s, bta, k):
             result.append( np.exp(-(bta * s_iter**2) / (1. + k)) * np.cosh(bta * s_iter))
 
         else:
-            result.append(  1.)
+            result.append(  2.7)
 
     return result
 
@@ -135,7 +149,7 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-
+plot_detach()
 def plot_attach():
     bta = 2.
     k = 10
