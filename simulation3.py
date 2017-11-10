@@ -28,7 +28,6 @@ class simulation:
     #kwargs: mode, seed, d, s, p, d_t, t0, k, bta, values_p, probabilities_p, vCoefficients (function of v polynomial)
     #checks, which variables should be stored, by default, everything is stored
     def __init__(self, mode, n_steps=int(1e4), n_heads=int(1e3), name="default", **kwargs):
-        #~ multiprocessing.Process.__init__(self)
         #these are the parameters
         #self.variables GET CHANGED WHITHIN FCN SCOPES!! no globaliyation needed (self. is like global)
         #most values are stored np.arrays nested in lists: for each run, append new array to list
@@ -98,11 +97,12 @@ class simulation:
         except:
             print("Directory already existing, please choose unique simulation name! Otherwise data might get overwritten")
 
-
         self.f_Sum_axis_added = {}
         self.v_axis_added = {}
         self.f_Sum_axis = [[]]
         self.v_axis = [[]]
+   
+    
     #similar to __init__
     def add_run(self, **kwargs):
         run = self.run
@@ -203,7 +203,7 @@ class simulation:
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
             #wrapping in here is mandatory for force calclation
-            s = h.wrapping(s, self.d[run])#############################################################################
+            s = h.wrapping(s, self.d[run])
             if p > 0: s += (p - 1) * d
             elif p < 0: s += p * d
             else: raise ValueError("something wrong with p")
@@ -225,21 +225,6 @@ class simulation:
             self.sum_P[run] = np.append(self.sum_P[run], s)
         return self.sum_P[run]
 
-#    #returns the averaged f_Sum values for each v_step
-#    def average_norm_force(self, run, f_Sum, v_step_list, equilib_wait_frac=0.2):
-#        #
-#        counter = collections.Counter(v_step_list)
-#        v_axis = sorted([i for i in counter])
-#        f_Sum_axis = []
-#        index = 0
-#        for e in v_axis:
-#            n = counter.get(e)
-#            f = np.mean(f_Sum[(index + int(n * equilib_wait_frac)):(index + n)])
-#            f_Sum_axis.append(f / self.n_heads[run])
-#            index += n
-#        self.v_axis[run] = v_axis
-#        self.f_Sum_axis[run] = f_Sum_axis
-#        return v_axis, f_Sum_axis
 
     def plot_p(self, run, leg=False):
         if isinstance(run, int):
@@ -428,60 +413,35 @@ class simulation:
                 pos += displ
             elif self.mode[run] == 'fControl':
                 #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
-                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run])
-#                print(s_mat_w)
-                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
-                k_plus_sum = k_plus_mat.sum(axis=1)
+#                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
+#                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
+#                k_plus_sum = k_plus_mat.sum(axis=1)
+                k_plus_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
                 k_min = h.k_minV(s, p, self.bta[run], self.k[run])
                 k = k_plus_sum + k_min
                 k_a = list(itertools.accumulate(k))
                 k_sum = sum(k_plus_sum + k_min)
-#                tau_p = np.array(h.tauV(rand01_plus[i], k_plus_sum))
 
-#                tau_m = np.array(h.tauV(rand01_min[i], k_min))
-#                tau = [plus+minus for plus,minus in zip(tau_p, tau_m)]
-                
-                tau = -1 / k_sum * np.log(rand011[i])
                 #find the result for the waiting time
-                tau_min = tau
-                #find head with lowest waiting time, if more heads have the same
+                tau = -1 / k_sum * np.log(rand011[i])
                 
-                rn2 = k_sum * rand012[i]
-                min_index = bisect.bisect_left(k_a,rn2)
-#                k_selected = k_s[index_s]
+                #get index of selected head
+                min_index = bisect.bisect_left(k_a, k_sum * rand012[i])
+                s_row = h.s_row(h.wrapping(s[min_index],self.d[run]), self.n_neighbours[run], self.d[run])
+                k_plus_row = h.k_plus_matrix(s_row, p[min_index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
                 
-#                min_index = k.index(k_selected)
-                
-                
-#                min_index = np.argwhere(tau == tau_min)[0]
-#
-#                if len(min_index) > 1: index = random.randint(len(min_index))
-#                else: index = 0
-#                min_index = min_index[index]
-
-
-
-
-
-
-
                 #update this head, calculate the force difference
                 s_i, p_i = s[min_index], p[min_index]
-                f_i = h.force(s_i, p_i, self.d[run])
-                    #in case of binding, s gets wrapped
-                s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_mat[min_index], k_plus_sum[min_index], run)
+                
+                    #in case of binding, s gets wrapped and positioned acc to p
+                s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_row, sum(k_plus_row), run)
                 s[min_index] = s_upd
                 p[min_index] = p_upd
-                #~ print (p_i, p_upd, min_index, tau_min)
-                f_upd = h.force(s_upd, p_upd, self.d[run])
-#                f_delta = f_upd - f_i
+                
                 f = h.forceV(s, p, self.d[run])
-#                print(f_i, f_upd)
-#                print('loadF')
-#                print(self.loadF[run])
+
                 f_delta = sum(f) - self.loadF[run]
-#                print('fdelta')
-#                print(f_delta)
+
 
                 #calculate number of attached heads
                 n_att = sum(h.unitizeV(p))
@@ -501,7 +461,7 @@ class simulation:
 
                 #updating the elapsed time
                 #~ print tau_min
-                t += tau_min
+                t += tau
                 self.t[run][i] = t
 
         #preparing the time vector to be added in first column of each file
@@ -603,7 +563,7 @@ d = 2.
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(2)]																
+loadF = [10. for i in range(3)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				

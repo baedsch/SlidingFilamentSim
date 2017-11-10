@@ -20,7 +20,7 @@ p_store = True
 f_store = False																					
 sum_f_store = True																				
 pos_store = True																			     	
-writeText = True																				
+writeText = False																				
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
@@ -35,7 +35,7 @@ d = 2.
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(10)]																
+loadF = [10. for i in range(1)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				
