@@ -1,6 +1,6 @@
 # SlidingFilamentSim
 
-This software simulates *sliding filaments* [text link](https://en.wikipedia.org/wiki/Sliding_filament_theory)
+This software simulates *sliding filaments* [https://en.wikipedia.org/wiki/Sliding_filament_theory](https://en.wikipedia.org/wiki/Sliding_filament_theory)
 
 ## How to use:
 1. **Choose operation mode** out of 
