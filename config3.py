@@ -58,7 +58,7 @@ if not len(step_min_val) == len(step_max_val) and mode == 'vControl':
 #configure mulitprocessing																		
 n_cores = 8																						
 																								
-																								
+# end initialization																								
 #################################################################################################|
 
 time_before = tme.time()

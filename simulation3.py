@@ -9,7 +9,7 @@ import os
 import platform
 import time as tme
 import time
-import threading as th
+#import threading as th
 import multiprocessing as mp
 import multiprocessing
 import tqdm
@@ -540,7 +540,7 @@ option = 'poly' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'matematica_crosscheck_f=10'													
+name = 'matematica_crosscheck_f=1'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -563,7 +563,7 @@ d = 2.
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(3)]																
+loadF = [1. for i in range(3)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				

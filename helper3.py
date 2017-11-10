@@ -98,7 +98,7 @@ def min_max_min(n, bta, k):
         res[varialbe_values[i]] = sorted([f_values[i], f_values[i + 1]])
     
     return res
-print(min_max_min(10,2,10))
+
 #returns the waiting time until reaction occurs
 def tau(r, k):
     if k == 0: return 0.
@@ -149,7 +149,7 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_detach()
+
 def plot_attach():
     bta = 2.
     k = 10
@@ -161,7 +161,7 @@ def plot_attach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_attach()
+
 #find the number of relevant neighbours up to arbitrary theshold
 def find_neighbours(th, d, bta, k, k_on):
     p = 0
