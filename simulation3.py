@@ -51,6 +51,9 @@ class simulation:
         self.k = [kwargs.get('k', 10.)]
         self.k_on = [kwargs.get('k_on', 10.)]
         self.th = [kwargs.get('th', 0.0001)]
+        self.n_div = [kwargs.get('n_div', 10)]
+        self.min_max_k_min = [{}]
+        self.min_max_k_plus = [{}]
         #values should look like this: [c_0, c_1, ..., c_n+1] for n^th polynomial
         self.v_Coeff = [kwargs.get('v_Coeff', [0])]
         self.step_n_jumps = [kwargs.get('step_n_jumps', int(n_steps / 1000))]
@@ -124,6 +127,9 @@ class simulation:
         self.k.append(kwargs.get('k', self.k[self.run]))
         self.k_on.append(kwargs.get('k_on', self.k_on[self.run]))
         self.th.append(kwargs.get('th', self.th[self.run]))
+        self.n_div.append(kwargs.get('n_div', self.th[self.n_div]))
+        self.min_max_k_min.append({})
+        self.min_max_k_plus.append({})
         self.v_Coeff.append(kwargs.get('v_Coeff', self.v_Coeff[self.run]))
         self.step_n_jumps.append(kwargs.get('step_n_jumps', int(self.n_steps[run] / 1000)))
         self.step_min_val.append(kwargs.get('step_min_val', 0.))
@@ -163,7 +169,12 @@ class simulation:
     def init_p_rand(self):
         self.p[self.run] = h.random_discrete(self.n_heads[self.run], self.values_p[self.run], self.probabilities_p[self.run])
         return self.p[self.run]
-
+    
+    def init_min_max_k(self, run):
+        self.min_max_k_min[run] = h.min_max_min(self.n_div[run], self.bta[run], self.k[run])
+        self.min_max_k_plus[run] = h.min_max_min(self.n_div[run], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
+        
+    
     #################################################MAIN UPDATE METHODS
     #main update method for mode==vControl
     def update_vC(self, s, p, r01, run, step, bta, k):
