@@ -36,7 +36,7 @@ class simulation:
         self.run = 0
         self.n_steps = [n_steps]
         self.n_heads = [n_heads]
-        if mode in ['vControl', 'fControl', ]: self.mode = [mode]
+        if mode in ['vControl', 'fControl', 'springControl']: self.mode = [mode]
         else: raise ValueError('Wrong mode chosen')
         self.option = [kwargs.get('option', '')]
         if not kwargs.get('option', '') in ['poly', 'step', 'const', '']: raise ValueError('Wrong option chosen')
@@ -52,6 +52,8 @@ class simulation:
         self.k_on = [kwargs.get('k_on', 10.)]
         self.th = [kwargs.get('th', 0.0001)]
         self.n_div = [kwargs.get('n_div', 10)]
+        self.k_pull = [kwargs.get('k_pull', 30)]
+        self.v_pull = [kwargs.get('v_pull', 5)]
         self.min_max_k_min = [{}]
         self.min_max_k_plus = [{}]
         #values should look like this: [c_0, c_1, ..., c_n+1] for n^th polynomial
@@ -76,7 +78,9 @@ class simulation:
         self.store['s'] = kwargs.get('s_store',True)
         if self.store.get('s'): self.S = [np.zeros((n_steps, n_heads))]
         self.store['pos'] = kwargs.get('pos_store',True)
-        if self.store.get('pos') or self.mode[self.run] == 'fControl': self.Pos = [np.zeros((n_steps,1))]
+        if self.store.get('pos') or self.mode[self.run] in ['fControl', 'springControl']: self.Pos = [np.zeros((n_steps,1))]
+        self.store['p'] = kwargs.get('p_store',True)
+        if self.store.get('pos_pull') or self.mode[self.run] in ['springControl']: self.Pos_pull = [np.zeros((n_steps,1))]
         self.store['p'] = kwargs.get('p_store',True)
         if self.store.get('p'): self.P = [np.zeros((n_steps, n_heads))]
         self.store['f'] = kwargs.get('f_store',True)
@@ -98,7 +102,7 @@ class simulation:
                 os.makedirs('.' + path)
                 os.chdir(path)
         except:
-            print("Directory already existing, please choose unique simulation name! Otherwise data might get overwritten")
+           raise ValueError("Directory already existing, please choose unique simulation name! Otherwise data might get overwritten")
 
         self.f_Sum_axis_added = {}
         self.v_axis_added = {}
@@ -112,7 +116,7 @@ class simulation:
         self.n_steps.append(kwargs.get('n_steps', self.n_steps[self.run]))
         self.n_heads.append(kwargs.get('n_heads', self.n_heads[self.run]))
         mode = kwargs.get('mode', self.mode[self.run])
-        if mode in ['vControl', 'fControl', ]: self.mode.append(kwargs.get('mode', self.mode[self.run]))
+        if mode in ['vControl', 'fControl', 'springControl']: self.mode.append(kwargs.get('mode', self.mode[self.run]))
         else: raise ValueError('Wrong mode chosen')
         self.option.append(kwargs.get('option', self.option[self.run]))
         if not self.option[-1] in ['poly', 'step', 'const', '']: raise ValueError('Wrong option chosen')
@@ -127,7 +131,9 @@ class simulation:
         self.k.append(kwargs.get('k', self.k[self.run]))
         self.k_on.append(kwargs.get('k_on', self.k_on[self.run]))
         self.th.append(kwargs.get('th', self.th[self.run]))
-        self.n_div.append(kwargs.get('n_div', self.th[self.n_div]))
+        self.n_div.append(kwargs.get('n_div', self.n_div[self.run]))
+        self.k_pull.append(kwargs.get('k_pull', self.k_pull[self.run]))
+        self.v_pull.append(kwargs.get('v_pull', self.v_pull[self.run]))
         self.min_max_k_min.append({})
         self.min_max_k_plus.append({})
         self.v_Coeff.append(kwargs.get('v_Coeff', self.v_Coeff[self.run]))
@@ -153,7 +159,8 @@ class simulation:
 
         #append new slots for storage of desired Variables out of s,p,f,sum_F
         if self.store.get('s'): self.S.append(np.zeros((self.n_steps[run], self.n_heads[run])))
-        if self.store.get('pos') or self.mode[self.run] == 'fControl': self.Pos.append(np.zeros((self.n_steps[self.run],1)))
+        if self.store.get('pos') or self.mode[self.run] in ['fControl', 'springControl']: self.Pos.append(np.zeros((self.n_steps[self.run],1)))
+        if self.store.get('pos_pull') or self.mode[self.run] in ['springControl']: self.Pos_pull.append(np.zeros((self.n_steps[self.run],1)))
         if self.store.get('p'): self.P.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('f'): self.F.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('sum_f'): self.sum_F.append(np.zeros((self.n_steps[run],1)))
@@ -170,6 +177,7 @@ class simulation:
         self.p[self.run] = h.random_discrete(self.n_heads[self.run], self.values_p[self.run], self.probabilities_p[self.run])
         return self.p[self.run]
     
+    #this is to get the upper and lower boundaries for acceptance rejection method
     def init_min_max_k(self, run):
         self.min_max_k_min[run] = h.min_max_min(self.n_div[run], self.bta[run], self.k[run])
         self.min_max_k_plus[run] = h.min_max_min(self.n_div[run], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
@@ -186,8 +194,7 @@ class simulation:
         elif self.option[run] == 'const':
             displ = self.v_Coeff[run][0]
         else:
-            print("error!!!!!!!!!!!!!!!!!!!!111, option:")
-            print(self.option[run])
+            raise ValueError("error! option: {}".format(self.option[run]))
         s = h.translate_def(s, displ * self.d_t[run])
 
         #case: unbound
@@ -220,13 +227,14 @@ class simulation:
             else: raise ValueError("something wrong with p")
         
         #case: bound
-        else:
-            p = 0
+        else: p = 0
 
         return s, p
     #vectorize it in order to enhance performance
     updateV_fC = np.vectorize(update_fC)
-
+    
+    def update_sC(self, s, p, d, K_plus, K_sum, rn):
+        
     #MAIN UPDATE METHODS#END############################################
 
     #takes the P array and returns the sum of bound heads for each timestep (after simulation)
@@ -392,6 +400,22 @@ class simulation:
             #~ print displ
             s = h.translateV(s, displ)
             pos += displ
+        if self.mode[run] in ['springControl']:
+            rand011 = random.random_sample(self.n_steps[run])
+            rand012 = random.random_sample(self.n_steps[run])
+            rand013 = random.random_sample(self.n_steps[run])
+            
+            #stretching to desired force
+            f = h.forceV(s, p, self.d[run])
+
+            sum_F = sum(f)
+            #~ print sum_F
+            n_att = sum(h.unitizeV(p))
+            #~ print n_att
+            displ = - sum_F / (n_att + self.k_pull[run])
+            #~ print displ
+            s = h.translateV(s, displ)
+            pos += displ
 
         print('having generated rands')
         print(pos)
@@ -474,6 +498,9 @@ class simulation:
                 #~ print tau_min
                 t += tau
                 self.t[run][i] = t
+                
+            elif self.mode[run] == 'springControl':
+                
 
         #preparing the time vector to be added in first column of each file
         t_w = self.t[run][np.newaxis]

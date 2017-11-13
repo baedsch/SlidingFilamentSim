@@ -149,19 +149,19 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-
-def plot_attach():
+plot_detach()
+def plot_detach():
     bta = 2.
     k = 10
     k_on  = 10.
     X = np.linspace(-3.,3., 2560)
-    D = k_plus_sum(X, 0, 2, bta, k, k_on,2,w=True) - k_plus_sum(X, 0, 2, bta, k, k_on,1,w=True)
+    D = k_plus_sum(X, 0, 2, bta, k, k_on,2,w=True)
     plt.figure(figsize=(8,6), dpi=80)
     plt.subplot(111)
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-
+plot_detach()
 #find the number of relevant neighbours up to arbitrary theshold
 def find_neighbours(th, d, bta, k, k_on):
     p = 0
