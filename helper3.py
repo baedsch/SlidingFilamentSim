@@ -52,8 +52,15 @@ def k_min(s, p, bta, k):
         return 1e50
 k_minV = np.vectorize(k_min)
 
+#integral of k_min
+def int_k_min(s, p, bta, k):
+    root = np.sqrt(bta / (1 + k))
+    c = np.sqrt(np.pi * (k + 1) / bta) / (4 * bta)
+    var = np.exp(bta * (1 + k) / 4) * (special.erf(root * (1 + k + 2*s) / 2) - special.erf(root * (1 + k - 2*s) / 2))
+    return c * var
+
 #attaching rate (+V) to be used with map fcn, either feed already wrapped s in or set w=True!
-def k_plus(s, p, d, bta, k, k_on,  w=False):
+def k_plus(s, p, d, bta, k, k_on,  w=True):
     if w: s = wrapping(s, d)
     pU = unitize(p)
     b = np.sqrt(bta)
@@ -64,6 +71,12 @@ def k_plus(s, p, d, bta, k, k_on,  w=False):
     return (1 - pU) * gaussianInt
 k_plusV = np.vectorize(k_plus)
 
+def int_k_plus(s, p, d, bta, k, k_on,  w=False):
+    b = np.sqrt(bta)
+    c = 0.5
+    res = (c-s) * special.erf(b * (s-c)) + (c+s) * special.erf(b * (s+c)) - np.exp(-b * (c+s)**2) * (np.exp(2 * b**2 * s) - 1) / (np.sqrt(np.pi) * b)
+    return c * k_on * res
+
 #attaching rate sum, either feed already wrapped s in or set w=True!
 def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     if w: s = wrapping(s, d)
@@ -73,7 +86,7 @@ def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     res = 0
     for i in [- n_neighbours + z for z in range(2 * n_neighbours + 1)]:
         #solution of gaussian integral
-        res += .5 * k_on * ( - special.erf(b * (s + (i * d) - c)) + special.erf(b * (s + + (i * d) + c)))
+        res += .5 * k_on * ( - special.erf(b * (s + (i * d) - c)) + special.erf(b * (s + (i * d) + c)))
 
     return (1 - pU) * res
 k_plus_sumV = np.vectorize(k_plus_sum)
@@ -99,6 +112,18 @@ def min_max_min(n, bta, k):
     
     return res
 
+def get_max_k_min(n, bta, k):
+    return np.exp(-(bta * ((1 + k) / 2)^2 ) / (1 + k)) * np.cosh(bta * (1 + k) / 2)
+
+def get_max_k_plus_sum(d, bta, k, k_on, n_neighbours):
+    b = np.sqrt(bta)
+    c = .5
+    res = 0
+    for i in [- n_neighbours + z for z in range(2 * n_neighbours + 1)]:
+        #solution of gaussian integral
+        res += .5 * k_on * ( - special.erf(b * (0 + (i * d) - c)) + special.erf(b * (0 + + (i * d) + c)))
+
+    return res
 #returns the waiting time until reaction occurs
 def tau(r, k):
     if k == 0: return 0.

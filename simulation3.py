@@ -200,10 +200,14 @@ class simulation:
         #case: unbound
         if h.unitize(p) == 0:
             K_plus = h.k_plus(h.s_row(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]), p, self.d[run], self.bta[run], self.k[run], self.k_on[run])
+#            K_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
             K_sum = sum(K_plus)
-            if r01 <= sum(K_plus) * self.d_t[run]:
+            if r01 <= K_sum * self.d_t[run]:
                 p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
                 s = h.wrapping(s, self.d[run])
+                if p > 0: s += (p - 1) * d
+                elif p < 0: s += p * d
+                else: raise ValueError("something wrong with p")
         #case: bound
         else:
             if r01 <= h.k_min(h.force(s, p, self.d[run]), p, bta, k) * self.d_t[run]:
@@ -233,8 +237,21 @@ class simulation:
     #vectorize it in order to enhance performance
     updateV_fC = np.vectorize(update_fC)
     
-    def update_sC(self, s, p, d, K_plus, K_sum, rn):
+    def update_sC(self, s, p, d, K_plus, K_sum, run):
+        #case: unbound
+        if h.unitize(p) == 0:
+            p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
+            #wrapping in here is mandatory for force calclation
+            s = h.wrapping(s, self.d[run])
+            if p > 0: s += (p - 1) * d
+            elif p < 0: s += p * d
+            else: raise ValueError("something wrong with p")
         
+        #case: bound
+        else: p = 0
+
+        return s, p
+    
     #MAIN UPDATE METHODS#END############################################
 
     #takes the P array and returns the sum of bound heads for each timestep (after simulation)
@@ -381,11 +398,12 @@ class simulation:
         pos = 0.
         t = 0.
 
-        #~~~~~~~~~~~~~~~~Here, the seed of the random generator could be implemented~~~~~~~~~~~~~~~~~~~~~~
+        #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
         #random numbers for udating (for 'fControl', we need two sets)
         if self.mode[run] in ['vControl']:
             print('rand creates')
             rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
+        
         if self.mode[run] in ['fControl']:
             rand011 = random.random_sample(self.n_steps[run])
             rand012 = random.random_sample(self.n_steps[run])
@@ -400,10 +418,13 @@ class simulation:
             #~ print displ
             s = h.translateV(s, displ)
             pos += displ
+        
         if self.mode[run] in ['springControl']:
             rand011 = random.random_sample(self.n_steps[run])
             rand012 = random.random_sample(self.n_steps[run])
             rand013 = random.random_sample(self.n_steps[run])
+            k_min_max = h.get_max_k_min(self.n[run], self.bta[run], self.k[run])
+            k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
             
             #stretching to desired force
             f = h.forceV(s, p, self.d[run])
@@ -416,10 +437,12 @@ class simulation:
             #~ print displ
             s = h.translateV(s, displ)
             pos += displ
-
+        #~~~~~~~~~~~~~~END SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~
+        
         print('having generated rands')
-        print(pos)
+        print('Pos = {}'.format(pos))
         #loop over all iteration steps
+        
         for i in tqdm.tqdm(range(self.n_steps[run])):
             #show, how many iterations have already elapsed
             #~ if float(i) / self.n_heads[run] in [.1, .2, .5, 1.]:
@@ -500,8 +523,40 @@ class simulation:
                 self.t[run][i] = t
                 
             elif self.mode[run] == 'springControl':
+                #immediate detachment if heads too far away from binding site
+                for hi in range(self.n_heads[run]):
+                    if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
+                         p[hi] = 0
+                         break
                 
-
+                k_upper = []
+                k = []
+                for hi in range(self.n_heads[run]):
+                    #case: unbound
+                    if h.unitize(p[hi]) == 0:
+                        k.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
+                        k_upper.append(k_plus_max)
+                    #case: bound
+                    if h.unitize(p[hi]) == 1:
+                        k.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
+                        k_upper.append(k_min_max)
+                k_upper_sum = sum(k_upper)
+                
+                #calc tau
+                tau = - np.log(rand011[i]) / k_upper_sum
+                t += tau
+                
+                #get index of update candidate
+                k_upper_accumulated = np.add.accumulate(k_upper)
+                index = bisect.bisect_left(k_upper_accumulated, k_upper_sum * rand012[i])
+                
+                probab = 0
+                #case: unbound
+                if h.unitize(p[hi]) == 0:
+                    
+                
+                if rand013[i] < 
+                    
         #preparing the time vector to be added in first column of each file
         t_w = self.t[run][np.newaxis]
         t_w = t_w.T
@@ -573,12 +628,12 @@ class simulation:
 
 #################################################################################################|
 
-mode = 'fControl' #choose from ['vControl', 'fControl', ]
+mode = 'vControl' #choose from ['vControl', 'fControl', ]
 option = 'poly' #for fControl choose from xy			
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'matematica_crosscheck_f=1'													
+name = 'spread_check_newUpdateFcn_v=10'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -598,10 +653,10 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.																				
-random.seed(121155)																				
+random.seed(12115)																				
 																								
 #parameters for fControl																		    
-loadF = [1. for i in range(3)]																
+loadF = [10. for i in range(50)]																
 																								
 #parameters for vControl																		    
 	#-> poly option																				
