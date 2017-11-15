@@ -71,11 +71,18 @@ def k_plus(s, p, d, bta, k, k_on,  w=True):
     return (1 - pU) * gaussianInt
 k_plusV = np.vectorize(k_plus)
 
-def int_k_plus(s, p, d, bta, k, k_on,  w=False):
+def int_k_plus(s1, s2, d, bta, k, k_on,  w=False):
+    s1t = s1 + d/2
+    s2t = s2 + d/2
+    
     b = np.sqrt(bta)
+    spi = np.sqrt(np.pi)
     c = 0.5
-    res = (c-s) * special.erf(b * (s-c)) + (c+s) * special.erf(b * (s+c)) - np.exp(-b * (c+s)**2) * (np.exp(2 * b**2 * s) - 1) / (np.sqrt(np.pi) * b)
-    return c * k_on * res
+#    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
+    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - s)**2)/(spi * b) + np.exp(-b**2 * (c + s)**2)/(spi) * b) + s * special.erf(b * (c - s)) + c * special.erf(b * (s - c)) + c * special.erf(b * (c + s)) + s * special.erf(b * (c + s)))
+    
+    if wrapping(s1t, d) >= wrapping(s2t, d):
+        return integral()
 
 #attaching rate sum, either feed already wrapped s in or set w=True!
 def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
