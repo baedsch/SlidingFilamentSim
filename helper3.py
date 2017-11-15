@@ -71,19 +71,26 @@ def k_plus(s, p, d, bta, k, k_on,  w=True):
     return (1 - pU) * gaussianInt
 k_plusV = np.vectorize(k_plus)
 
-def int_k_plus(s1, s2, d, bta, k, k_on,  w=False):
+def int_k_plus(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
     s1t = s1 + d/2
+    s1tw = wrapping(s1t, d)
     s2t = s2 + d/2
+    s2tw = wrapping(s2t, d)
     
     b = np.sqrt(bta)
     spi = np.sqrt(np.pi)
     c = 0.5
 #    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
-    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - s)**2)/(spi * b) + np.exp(-b**2 * (c + s)**2)/(spi) * b) + s * special.erf(b * (c - s)) + c * special.erf(b * (s - c)) + c * special.erf(b * (c + s)) + s * special.erf(b * (c + s)))
+    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - (s-d/2))**2)/(spi * b) + np.exp(-b**2 * (c + (s-d/2))**2)/(spi * b) + (s-d/2) * special.erf(b * (c - (s-d/2))) + c * special.erf(b * ((s-d/2) - c)) + c * special.erf(b * (c + (s-d/2))) + (s-d/2) * special.erf(b * (c + (s-d/2))))
+    int_full_period = integral(d) - integral(0)
     
-    if wrapping(s1t, d) >= wrapping(s2t, d):
-        return integral()
-
+    if s2tw >= s1tw:
+        res = 0
+        for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
+           res  
+        return integral(s2tw) - integral(s1tw) + ((s2t - s1t) // d) * int_full_period #// is floor division in python
+    else:
+       return integral(s2tw) - integral(s1tw) + ((s2t - s1t) // d + 1) * int_full_period #// is floor division in python 
 #attaching rate sum, either feed already wrapped s in or set w=True!
 def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     if w: s = wrapping(s, d)
@@ -182,18 +189,47 @@ def plot_detach():
 
     plt.show()
 plot_detach()
-def plot_detach():
+
+
+def plot_attach_diff():
     bta = 2.
     k = 10
     k_on  = 10.
     X = np.linspace(-3.,3., 2560)
-    D = k_plus_sum(X, 0, 2, bta, k, k_on,2,w=True)
+    D = k_plus_sum(X, 0, 0.2, bta, k, k_on,10,w=True) - k_plus_sum(X, 0, 0.2, bta, k, k_on,9,w=True)
     plt.figure(figsize=(8,6), dpi=80)
     plt.subplot(111)
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_detach()
+plot_attach_diff()
+
+def plot_attach_one():
+    bta = 2.
+    k = 10
+    k_on  = 10.
+    X = np.linspace(-3.,3., 2560)
+    D = k_plus_sum(X, 0, 0.2, bta, k, k_on,2,w=False)
+    plt.figure(figsize=(8,6), dpi=80)
+    plt.subplot(111)
+    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
+
+    plt.show()
+plot_attach_one()
+
+def plot_attach():
+    bta = 2.
+    k = 10
+    k_on  = 10.
+    X = np.linspace(-3.,3., 2560)
+    
+    D = k_plus(X, 0, 2, bta, k, k_on,w=True)
+    plt.figure(figsize=(8,6), dpi=80)
+    plt.subplot(111)
+    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
+
+    plt.show()
+plot_attach()
 #find the number of relevant neighbours up to arbitrary theshold
 def find_neighbours(th, d, bta, k, k_on):
     p = 0

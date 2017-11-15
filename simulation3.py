@@ -553,7 +553,7 @@ class simulation:
                 probab = 0
                 #case: unbound
                 if h.unitize(p[hi]) == 0:
-                    
+                    ###############################################################
                 
                 if rand013[i] < 
                     
