@@ -68,9 +68,8 @@ class simulation:
         self.p = [kwargs.get('p', h.random_discrete(self.n_heads[self.run], probabilities=self.probabilities_p[self.run]))]
         self.t0 = [kwargs.get('t0', 0.)]
         if mode in ['vControl']: self.t = [np.array([i*self.d_t[self.run] + self.t0[self.run] for i in range(self.n_steps[self.run])])]
-        if mode in ['fControl']: self.t = [np.zeros(n_steps)]
-        self.sum_P = [np.array([])]
-
+        if mode in ['fControl', 'springControl']: self.t = [np.zeros(n_steps)]
+#        self.sum_P = [np.array([])]
         self.n_neighbours = [h.find_neighbours(self.th[self.run], self.d[self.run], self.bta[self.run], self.k[self.run], self.k_on[self.run])]
 
         #declare storage of desired Variables out of s,p,f,sum_F
@@ -87,6 +86,8 @@ class simulation:
         if self.store.get('f'): self.F = [np.zeros((n_steps, n_heads))]
         self.store['sum_f'] = kwargs.get('sum_f_store',True)
         if self.store.get('sum_f'): self.sum_F = [np.zeros((n_steps,1))]
+        self.store['sum_p'] = kwargs.get('sum_p_store',True)
+        if self.store.get('sum_p'): self.sum_P = [np.zeros((n_steps,1))]
 
         #write the stored variables into textfiles?
         self.writeText = kwargs.get('writeText', False)
@@ -152,8 +153,8 @@ class simulation:
         run = self.run
 
         if self.mode[self.run] in ['vControl']: self.t.append(np.array([i*self.d_t[self.run] + self.t0[self.run] for i in range(self.n_steps[self.run])]))
-        elif self.mode[self.run] in ['fControl']: self.t.append(np.zeros(self.n_steps[run]))
-        self.sum_P.append(np.array([]))
+        elif self.mode[self.run] in ['fControl', 'springControl']: self.t.append(np.zeros(self.n_steps[run]))
+#        self.sum_P.append(np.array([]))
         self.n_neighbours.append(h.find_neighbours(self.th[self.run], self.d[self.run], self.bta[self.run], self.k[self.run], self.k_on[run]))
 
 
@@ -164,6 +165,7 @@ class simulation:
         if self.store.get('p'): self.P.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('f'): self.F.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('sum_f'): self.sum_F.append(np.zeros((self.n_steps[run],1)))
+        if self.store.get('sum_p'): self.sum_P.append(np.zeros((self.n_steps[run],1)))
 
 
         self.f_Sum_axis.append([])
@@ -185,7 +187,7 @@ class simulation:
     
     #################################################MAIN UPDATE METHODS
     #main update method for mode==vControl
-    def update_vC(self, s, p, r01, run, step, bta, k):
+    def update_vC(self, s, p, d, r01, run, step, bta, k):
         #update position according to option
         if self.option[run] == 'poly':
             displ = np.polynomial.polynomial.polyval(step, self.v_Coeff[run])
@@ -278,6 +280,8 @@ class simulation:
             if len(self.args_passed[r]) == 1:
                 lab = list(self.args_passed[r])[0]
                 val = self.args_passed[r][lab]
+                print('t', max(self.t[r]))
+                print('p', self.sum_P[r])
                 ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
@@ -420,10 +424,11 @@ class simulation:
             pos += displ
         
         if self.mode[run] in ['springControl']:
+            pos_pull = 0
             rand011 = random.random_sample(self.n_steps[run])
             rand012 = random.random_sample(self.n_steps[run])
             rand013 = random.random_sample(self.n_steps[run])
-            k_min_max = h.get_max_k_min(self.n[run], self.bta[run], self.k[run])
+            k_min_max = h.get_max_k_min(self.bta[run], self.k[run])
             k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
             
             #stretching to desired force
@@ -451,6 +456,7 @@ class simulation:
             #calculate force, f contains all forces of each head, sum_F is total load on filament
             f = h.forceV(s, p, self.d[run])
             sum_F = sum(f)
+            sum_P = sum(h.unitize(p))
 
             #store Variables s, p
             if self.store.get('s'): self.S[run][i] = s
@@ -458,12 +464,13 @@ class simulation:
             if self.store.get('p'): self.P[run][i] = p
             if self.store.get('f'): self.F[run][i] = f
             if self.store.get('sum_f'): self.sum_F[run][i] = sum_F
+            if self.store.get('sum_p'): self.sum_P[run][i] = sum_P
 
 
             #update s and p according to mode
             #self.s and self.p remain unchanged!
             if self.mode[run] == 'vControl':
-                s, p = self.updateV_vC(self, s, p, rand01[i], run, i, self.bta[run], self.k[run])
+                s, p = self.updateV_vC(self, s, p, self.d[run], rand01[i], run, i, self.bta[run], self.k[run])
                 if self.option[run] == 'poly':
                     displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
                 elif self.option[run] == 'step':
@@ -530,32 +537,77 @@ class simulation:
                          break
                 
                 k_upper = []
-                k = []
+                kV = []
                 for hi in range(self.n_heads[run]):
                     #case: unbound
                     if h.unitize(p[hi]) == 0:
-                        k.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
+#                        kV.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
                         k_upper.append(k_plus_max)
                     #case: bound
                     if h.unitize(p[hi]) == 1:
-                        k.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
+#                        kV.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
                         k_upper.append(k_min_max)
                 k_upper_sum = sum(k_upper)
                 
                 #calc tau
                 tau = - np.log(rand011[i]) / k_upper_sum
                 t += tau
+                self.t[run][i] = t
+                
+                
+                ##displacements during waiting time
+                pos_pull += self.v_pull[run] * tau
+                n_att = sum(h.unitizeV(p))
+                delta_pos = self.v_pull[run] * tau / (1 + n_att / self.k_pull[run])
+                if pos_pull < pos:
+                    delta_pos *= -1 #this is to allow the filament to "overtake" the puller
+                s = h.translateV(s, delta_pos)
+                pos += delta_pos
+                
                 
                 #get index of update candidate
                 k_upper_accumulated = np.add.accumulate(k_upper)
                 index = bisect.bisect_left(k_upper_accumulated, k_upper_sum * rand012[i])
+                n_att = sum(h.unitizeV(p))
                 
-                probab = 0
+                s_i, p_i = s[index], p[index]
                 #case: unbound
-                if h.unitize(p[hi]) == 0:
-                    ###############################################################
+                if h.unitize(p[index]) == 0:
+                    ##calculate probability ratio in order to verify head selection
+                    #s_tau: s[index] after waiting time tau
+                    s_tau = s[index] + delta_pos
+                    prob = h.int_k_plus_sum(s[index], s_tau, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
                 
-                if rand013[i] < 
+                    if rand013[i] < prob / (k_plus_max * tau):
+
+                        s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
+                        k_plus_row = h.k_plus_matrix(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+                        s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
+                        
+                #case: bound
+                else:
+                    ##calculate probability ratio in order to verify head selection
+                    #s_tau: s[index] after waiting time tau
+                    s_tau = s[index] + delta_pos
+                    prob = h.int_k_min(s_tau, p[index], self.bta[run], self.k[run]) - h.int_k_min(s[index], p[index], self.bta[run], self.k[run])
+                
+                    if rand013[i] < abs(prob) / (k_plus_max * tau):
+                        s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
+                
+                s_upd, p_upd = s[index], p[index]
+                n_att_upd = sum(h.unitizeV(p))
+                
+                #jump of filament due to attachment / detatchment
+                pos_upd = pos * (self.k_pull[run] - n_att) / (self.k_pull[run] - n_att_upd) #attention! this works only if pos_pull>pos!!!
+                displ = pos_upd - pos
+                if pos_pull < pos:
+                    displ *= -1 #this is to allow the filament to "overtake" the puller
+                s = h.translateV(s, displ)
+                pos += displ
+                
+
+                
+                
                     
         #preparing the time vector to be added in first column of each file
         t_w = self.t[run][np.newaxis]
@@ -628,57 +680,57 @@ class simulation:
 
 #################################################################################################|
 
-mode = 'vControl' #choose from ['vControl', 'fControl', ]
-option = 'poly' #for fControl choose from xy			
-				#for vControl choose from 													
-				#						-> poly: specify coefficients						
-				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spread_check_newUpdateFcn_v=10'													
-																								
-#store data in ram / write them to text files?													
-s_store = False																					
-p_store = True																					
-f_store = False																					
-sum_f_store = True																				
-pos_store = True																			     	
-writeText = True																				
-																								
-#most important parameters																		
-n_heads = int(1e2)																			
-n_steps = int(1e4)																				
-d_t = 5e-3																						
-bta = 2.																						
-k = 10.
-k_on = 10.																						
-th = 0.01																						
-t0 = 0.																						
-d = 2.																				
-random.seed(12115)																				
-																								
-#parameters for fControl																		    
-loadF = [10. for i in range(50)]																
-																								
-#parameters for vControl																		    
-	#-> poly option																				
-v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
-																								
-	#-> step option																				
-#step_n_jumps = int(n_steps / 1000)															    
-colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
-#step_n_jumps = [25.,25]																		    
+#mode = 'vControl' #choose from ['vControl', 'fControl', ]
+#option = 'poly' #for fControl choose from xy			
+#				#for vControl choose from 													
+#				#						-> poly: specify coefficients						
+#				#						-> step: specify n_elem, n_jumps, min_val, max_val		
+#name = 'spread_check_newUpdateFcn_v=10'													
+#																								
+##store data in ram / write them to text files?													
+#s_store = False																					
+#p_store = True																					
+#f_store = False																					
+#sum_f_store = True																				
+#pos_store = True																			     	
+#writeText = True																				
+#																								
+##most important parameters																		
+#n_heads = int(1e2)																			
+#n_steps = int(1e4)																				
+#d_t = 5e-3																						
+#bta = 2.																						
+#k = 10.
+#k_on = 10.																						
+#th = 0.01																						
+#t0 = 0.																						
+#d = 2.																				
+#random.seed(12115)																				
+#																								
+##parameters for fControl																		    
+#loadF = [10. for i in range(50)]																
+#																								
+##parameters for vControl																		    
+#	#-> poly option																				
+#v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
+#																								
+#	#-> step option																				
+##step_n_jumps = int(n_steps / 1000)															    
+#colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
+##step_n_jumps = [25.,25]																		    
+##step_min_val = [0., 0.05]																		
+##step_max_val = [0.05, 0.2]
+#step_n_jumps = [25., 25.]																		    
 #step_min_val = [0., 0.05]																		
 #step_max_val = [0.05, 0.2]
-step_n_jumps = [25., 25.]																		    
-step_min_val = [0., 0.05]																		
-step_max_val = [0.05, 0.2]
-																		
-#step_factors = [1, 3]																		    
-if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    
-	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
-                                    																
-#configure mulitprocessing																		
-n_cores = 8																						
-																								
+#																		
+##step_factors = [1, 3]																		    
+#if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    
+#	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
+#                                    																
+##configure mulitprocessing																		
+#n_cores = 8																						
+#																								
 																								
 #################################################################################################|
 
@@ -729,231 +781,231 @@ time_before = tme.time()
 
 ########### MULTIPLE RUN, GIVEN LOAD SNIPPET
 
-sim = simulation(mode,
-					n_steps,
-					n_heads,
-					name = name,
-					option = option,
-					s_store = s_store,
-					f_store = f_store,
-					f_sum_store = sum_f_store,
-					pos_store = pos_store,
-					writeText = writeText,
-                    s=[-0.5093321181141888,
- -0.681112344058524,
- -0.43202495465981317,
- 0.18293457146938286,
- -0.07648946416162383,
- 0.0020131366483209234,
- 0.7841875980533466,
- -0.836000543754047,
- 0.8862758367210133,
- 0.955243017716624,
- 0.30520312457143906,
- -0.7085465721847561,
- 0.10941748646789184,
- -0.8946966128222149,
- 0.3431225721368336,
- -0.6103248804183066,
- -0.6960484816709815,
- 0.05167743248455414,
- -0.805766551928107,
- -0.994261895312988,
- 0.8344591021204155,
- 0.26579268456393734,
- 0.7500856423295263,
- 0.17902426065431376,
- 0.049952543761914825,
- -0.7399771824461432,
- 0.8911813859325814,
- -0.3670218949323254,
- -0.5223444061111566,
- 0.34433510589547867,
- 0.3414039706038121,
- 0.11184830003806967,
- 0.4053260408003907,
- -0.21557540261892472,
- -0.1915320482997407,
- 0.6610736513760944,
- -0.8373102647544042,
- 0.0026973100555971463,
- -0.7816199229825243,
- 0.9225985630042488,
- 0.1527286424585581,
- -0.5054191388726386,
- 0.8894578129744648,
- 0.8592876228256374,
- -0.12785791063496355,
- 0.9589658606470359,
- 0.013603278692741139,
- -0.4806013853679625,
- 0.07005950385046589,
- -0.2444753727770168,
- 0.6084573043038168,
- -0.05073624008745581,
- -0.22270332344843347,
- -0.35624827117441304,
- 0.15715937867216034,
- -0.24048648185094823,
- -0.040733292041214675,
- 0.44285470846251185,
- -0.773277180886895,
- 0.1047267059846444,
- -0.06091804486023378,
- 0.5548010367895637,
- -0.7032465006254927,
- 0.9327979001490219,
- 0.034043987636752426,
- -0.40507341944797703,
- -0.8247322717155448,
- -0.3087786845253033,
- 0.9102394086303232,
- 0.7167205890608286,
- 0.17575002158560338,
- 0.3535255894105571,
- -0.4152856822858988,
- -0.69980763723219,
- -0.27043155572008004,
- 0.017456030697633462,
- 0.6194463131852475,
- -0.4137566355131126,
- -0.4441269188495873,
- 0.0022962809325641764,
- 0.04099026325252364,
- -0.5336165459618716,
- 0.6085306884075035,
- 0.5674714895429434,
- -0.8600798550584341,
- -0.23681256478990242,
- -0.3201486237050797,
- 0.8976762901719453,
- -0.33937340483300105,
- 0.19689259978727147,
- -0.495425478757904,
- -0.577326082305456,
- -0.6660334311243008,
- -0.4861756887615396,
- 0.6758157766871551,
- 0.1356911249572419,
- -0.7569920663189604,
- 0.9943903827899554,
- -0.4206005447393233,
- 0.5878676243794425],
-                    p=[1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 0.0,
- 0.0,
- 1.0,
- 0.0,
- 1.0,
- 1.0,
- 1.0,
- 0.0,
- 0.0],
-					bta = bta,
-					k = k,
-                        k_on = k_on,
-					th = th,
-					d_t = d_t,
-					d = d)
-for f in loadF:
-	sim.add_run(loadF=f)
-n = np.array([i+1 for i in range(len(loadF))])
-for rn in n:
-	sim.start_run(rn)
-	sim.sum_up_P(rn)
-sim.plot_pos(n)
-sim.plot_p(n)
-sim.plot_f(n)
+#sim = simulation(mode,
+#					n_steps,
+#					n_heads,
+#					name = name,
+#					option = option,
+#					s_store = s_store,
+#					f_store = f_store,
+#					f_sum_store = sum_f_store,
+#					pos_store = pos_store,
+#					writeText = writeText,
+#                    s=[-0.5093321181141888,
+# -0.681112344058524,
+# -0.43202495465981317,
+# 0.18293457146938286,
+# -0.07648946416162383,
+# 0.0020131366483209234,
+# 0.7841875980533466,
+# -0.836000543754047,
+# 0.8862758367210133,
+# 0.955243017716624,
+# 0.30520312457143906,
+# -0.7085465721847561,
+# 0.10941748646789184,
+# -0.8946966128222149,
+# 0.3431225721368336,
+# -0.6103248804183066,
+# -0.6960484816709815,
+# 0.05167743248455414,
+# -0.805766551928107,
+# -0.994261895312988,
+# 0.8344591021204155,
+# 0.26579268456393734,
+# 0.7500856423295263,
+# 0.17902426065431376,
+# 0.049952543761914825,
+# -0.7399771824461432,
+# 0.8911813859325814,
+# -0.3670218949323254,
+# -0.5223444061111566,
+# 0.34433510589547867,
+# 0.3414039706038121,
+# 0.11184830003806967,
+# 0.4053260408003907,
+# -0.21557540261892472,
+# -0.1915320482997407,
+# 0.6610736513760944,
+# -0.8373102647544042,
+# 0.0026973100555971463,
+# -0.7816199229825243,
+# 0.9225985630042488,
+# 0.1527286424585581,
+# -0.5054191388726386,
+# 0.8894578129744648,
+# 0.8592876228256374,
+# -0.12785791063496355,
+# 0.9589658606470359,
+# 0.013603278692741139,
+# -0.4806013853679625,
+# 0.07005950385046589,
+# -0.2444753727770168,
+# 0.6084573043038168,
+# -0.05073624008745581,
+# -0.22270332344843347,
+# -0.35624827117441304,
+# 0.15715937867216034,
+# -0.24048648185094823,
+# -0.040733292041214675,
+# 0.44285470846251185,
+# -0.773277180886895,
+# 0.1047267059846444,
+# -0.06091804486023378,
+# 0.5548010367895637,
+# -0.7032465006254927,
+# 0.9327979001490219,
+# 0.034043987636752426,
+# -0.40507341944797703,
+# -0.8247322717155448,
+# -0.3087786845253033,
+# 0.9102394086303232,
+# 0.7167205890608286,
+# 0.17575002158560338,
+# 0.3535255894105571,
+# -0.4152856822858988,
+# -0.69980763723219,
+# -0.27043155572008004,
+# 0.017456030697633462,
+# 0.6194463131852475,
+# -0.4137566355131126,
+# -0.4441269188495873,
+# 0.0022962809325641764,
+# 0.04099026325252364,
+# -0.5336165459618716,
+# 0.6085306884075035,
+# 0.5674714895429434,
+# -0.8600798550584341,
+# -0.23681256478990242,
+# -0.3201486237050797,
+# 0.8976762901719453,
+# -0.33937340483300105,
+# 0.19689259978727147,
+# -0.495425478757904,
+# -0.577326082305456,
+# -0.6660334311243008,
+# -0.4861756887615396,
+# 0.6758157766871551,
+# 0.1356911249572419,
+# -0.7569920663189604,
+# 0.9943903827899554,
+# -0.4206005447393233,
+# 0.5878676243794425],
+#                    p=[1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 0.0,
+# 1.0,
+# 0.0,
+# 1.0,
+# 1.0,
+# 1.0,
+# 0.0,
+# 0.0],
+#					bta = bta,
+#					k = k,
+#                        k_on = k_on,
+#					th = th,
+#					d_t = d_t,
+#					d = d)
+#for f in loadF:
+#	sim.add_run(loadF=f)
+#n = np.array([i+1 for i in range(len(loadF))])
+#for rn in n:
+#	sim.start_run(rn)
+#	sim.sum_up_P(rn)
+#sim.plot_pos(n)
+#sim.plot_p(n)
+#sim.plot_f(n)
 ###########################################
 
 ########### MULTIPLE RUN, GIVEN VELOCITY SNIPPET

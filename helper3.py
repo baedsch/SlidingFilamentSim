@@ -71,6 +71,7 @@ def k_plus(s, p, d, bta, k, k_on,  w=True):
     return (1 - pU) * gaussianInt
 k_plusV = np.vectorize(k_plus)
 
+#the lambda expression
 def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
     s1t = s1 + d/2
     s1tw = wrapping(s1t, d)
@@ -82,21 +83,23 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
     c = 0.5
 #    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
 #    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - (s-d/2))**2)/(spi * b) + np.exp(-b**2 * (c + (s-d/2))**2)/(spi * b) + (s-d/2) * special.erf(b * (c - (s-d/2))) + c * special.erf(b * ((s-d/2) - c)) + c * special.erf(b * (c + (s-d/2))) + (s-d/2) * special.erf(b * (c + (s-d/2))))
-    integral = lambda s, i : c * k_on / (b * spi) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * s + s**2/2 + c * (i*d + s))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + s))) +
-    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+d)**2 + 2 * c * (c + d) * s + s**2)) * (-c + i*d + s) * special.erf(b * (-c + i*d + s)) +
-    b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+d)**2 + 2 * c * (c + d) * s + s**2)) * (c + i*d + s) * special.erf(b * (c + i*d + s)))
+    integralt = lambda s, i : c * k_on / (b * spi) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * (s-d/2) + (s-d/2)**2/2 + c * (i*d + (s-d/2)))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + (s-d/2)))) +
+    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))) +
+    b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))))
     
-    int_full_period = lambda i: integral(-d/2, i) - integral(d/2, i)
+    int_full_period = lambda i: integralt(0, i) - integralt(d, i)
     
     if s2tw >= s1tw:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-           res += integral(s2tw) - integral(s1tw) + ((s2t - s1t) // d) * int_full_period(n) #// is floor division in python
+            
+            #AAAACHtung: n oder 0 in lambda???
+            res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d) * int_full_period(n) #// is floor division in python
         return res
     else:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-           res += integral(s2tw) - integral(s1tw) + ((s2t - s1t) // d + 1) * int_full_period(n) #// is floor division in python
+           res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d + 1) * int_full_period(n) #// is floor division in python
         return res
 
 #attaching rate sum, either feed already wrapped s in or set w=True!
@@ -134,8 +137,8 @@ def min_max_min(n, bta, k):
     
     return res
 
-def get_max_k_min(n, bta, k):
-    return np.exp(-(bta * ((1 + k) / 2)^2 ) / (1 + k)) * np.cosh(bta * (1 + k) / 2)
+def get_max_k_min(bta, k):
+    return np.exp(-(bta * ((1 + k) / 2)**2 ) / (1 + k)) * np.cosh(bta * (1 + k) / 2)
 
 def get_max_k_plus_sum(d, bta, k, k_on, n_neighbours):
     b = np.sqrt(bta)
