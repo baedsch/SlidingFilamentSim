@@ -558,7 +558,9 @@ class simulation:
                 ##displacements during waiting time
                 pos_pull += self.v_pull[run] * tau
                 n_att = sum(h.unitizeV(p))
-                delta_pos = self.v_pull[run] * tau / (1 + n_att / self.k_pull[run])
+#                delta_pos = self.v_pull[run] * tau / (1 + n_att / self.k_pull[run])
+                
+                
                 if pos_pull < pos:
                     delta_pos *= -1 #this is to allow the filament to "overtake" the puller
                 s = h.translateV(s, delta_pos)
