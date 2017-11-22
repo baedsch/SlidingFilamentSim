@@ -94,12 +94,12 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
             
             #AAAACHtung: n oder 0 in lambda???
-            res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d) * int_full_period(n) #// is floor division in python
+            res += abs(integralt(s2tw, n) - integralt(s1tw, n)) + (abs((s2t - s1t)) // d) * int_full_period(n) #// is floor division in python
         return res
     else:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-           res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d + 1) * int_full_period(n) #// is floor division in python
+           res += abs(integralt(s2tw, n) - integralt(s1tw, n)) + (abs((s2t - s1t)) // d + 1) * int_full_period(n) #// is floor division in python
         return res
 
 #attaching rate sum, either feed already wrapped s in or set w=True!
@@ -199,7 +199,7 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_detach()
+#plot_detach()
 
 
 def plot_attach_diff():
@@ -213,7 +213,7 @@ def plot_attach_diff():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_attach_diff()
+#plot_attach_diff()
 
 def plot_attach_one():
     bta = 2.

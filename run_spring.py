@@ -12,7 +12,7 @@ option = '' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spring_test_v=0p5_k_50'													
+name = 'spring_test_newDispl_v-1__k_2__ns_5e5'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -24,7 +24,7 @@ writeText = False
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e4)																				
+n_steps = int(5e5)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
@@ -56,10 +56,10 @@ if not len(step_min_val) == len(step_max_val) and mode == 'vControl':
 	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
            
 #parameters for springControl
-k_pull = 50
+k_pull = 2
 v_pull = 5
 
-velocities = [0.5 for i in range(2)]
+velocities = [-1 for i in range(1)]
                          																
 #configure mulitprocessing																		
 n_cores = 8																						

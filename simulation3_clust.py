@@ -12,7 +12,7 @@ import time
 #import threading as th
 import multiprocessing as mp
 import multiprocessing
-import tqdm
+
 import bisect
 import itertools
 import collections
@@ -455,7 +455,7 @@ class simulation:
         print('Pos = {}'.format(pos))
         #loop over all iteration steps
         
-        for i in tqdm.tqdm(range(self.n_steps[run])):
+        for i in range(self.n_steps[run]):
             #show, how many iterations have already elapsed
             #~ if float(i) / self.n_heads[run] in [.1, .2, .5, 1.]:
                 #~ print str(float(i) / self.n_heads[run] *100) + '% of steps elapsed (run {})'.format(run)
@@ -615,7 +615,6 @@ class simulation:
                 #jump of filament due to attachment / detatchment
                 f = h.forceV(s, p, self.d[run])
                 sum_F = sum(f)
-                #seems to be -sum_F why????????????????????????????????????????????????????????????????????????????????????????????????????
                 pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
 #                pos_upd = pos * (self.k_pull[run] - n_att) / (self.k_pull[run] - n_att_upd) #attention! this works only if pos_pull>pos!!!
                 jump = pos_upd - pos
