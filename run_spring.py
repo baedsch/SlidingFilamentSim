@@ -12,7 +12,7 @@ option = '' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spring_test_newDispl_v-1__k_2__ns_5e5'													
+name = 'spring_test_newDispl_v1__k_5__ns_5e6'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -24,7 +24,7 @@ writeText = False
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(5e5)																				
+n_steps = int(1e4)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
