@@ -229,7 +229,7 @@ def plot_attach_one():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_attach_one()
+#plot_attach_one()
 
 def plot_attach():
     bta = 2.
@@ -243,7 +243,7 @@ def plot_attach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_attach()
+#plot_attach()
 #find the number of relevant neighbours up to arbitrary theshold
 def find_neighbours(th, d, bta, k, k_on):
     p = 0

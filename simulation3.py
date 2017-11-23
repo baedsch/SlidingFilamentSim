@@ -538,10 +538,10 @@ class simulation:
                 
             elif self.mode[run] == 'springControl':
                 #immediate detachment if heads too far away from binding site
-#                for hi in range(self.n_heads[run]):
-#                    if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
-#                         p[hi] = 0
-#                         n_dd += 1
+                for hi in range(self.n_heads[run]):
+                    if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
+                         p[hi] = 0
+                         n_dd += 1
 #                         break
                 
                 k_upper = []
@@ -602,8 +602,9 @@ class simulation:
                     #s_tau: s[index] after waiting time tau
                     s_tau = s[index] + delta_pos
                     prob = h.int_k_min(s_tau, p[index], self.bta[run], self.k[run]) - h.int_k_min(s[index], p[index], self.bta[run], self.k[run])
+                    prob = abs(prob)
                 
-                    if rand013[i] < abs(prob) / (k_plus_max * tau):
+                    if rand013[i] < abs(prob) / (k_min_max * tau):
                         n_k_m_u +=1
                         s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
                     else: n_k_m_nu +=1
