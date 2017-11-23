@@ -12,7 +12,7 @@ option = 'poly' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'matematica_crosscheck_v=10'													
+name = 'spring_crosscheck_v=2p5'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -20,11 +20,11 @@ p_store = True
 f_store = False																					
 sum_f_store = True																				
 pos_store = True																			     	
-writeText = True																				
+writeText = False																			
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e4)																				
+n_steps = int(1e3)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
@@ -39,7 +39,7 @@ loadF = [10. for i in range(3)]
 																								
 #parameters for vControl																		    
 	#-> poly option																				
-v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
+v_Coeff = [[2.5, 0.] for i in range(3)] #example for constant velocity of 1.										
 																								
 	#-> step option																				
 #step_n_jumps = int(n_steps / 1000)															    
@@ -63,29 +63,28 @@ n_cores = 8
 
 ########### MULTIPLE RUN, GIVEN VELOCITY SNIPPET
 
-#sim = simulation(mode,
-#					n_steps,
-#					n_heads,
-#					name = name,
-#					option = option,
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#					bta = bta,
-#					k = k,
-#                        k_on = k_on,
-#					th = th,
-#					d_t = d_t,
-#					d = d)
-#for f in v_Coeff:
-#	sim.add_run(v_Coeff=f)
-#n = np.array([i+1 for i in range(len(v_Coeff))])
-#for rn in n:
-#	sim.start_run(rn)
-#	sim.sum_up_P(rn)
-#sim.plot_pos(n)
-#sim.plot_p(n)
-#sim.plot_f(n)
+sim = simulation(mode,
+					n_steps,
+					n_heads,
+					name = name,
+					option = option,
+					s_store = s_store,
+					f_store = f_store,
+					f_sum_store = sum_f_store,
+					pos_store = pos_store,
+					writeText = writeText,
+					bta = bta,
+					k = k,
+                        k_on = k_on,
+					th = th,
+					d_t = d_t,
+					d = d)
+for v in v_Coeff:
+	sim.add_run(v_Coeff=v)
+n = np.array([i+1 for i in range(len(v_Coeff))])
+for rn in n:
+	sim.start_run(rn)
+sim.plot_pos(n)
+sim.plot_p(n)
+sim.plot_f(n)
 ###########################################

@@ -244,7 +244,7 @@ class simulation:
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
             #wrapping in here is mandatory for force calclation
-            s = h.wrapping(s, self.d[run])
+            s = h.wrapping(s, d)
             if p > 0: s += (p - 1) * d
             elif p < 0: s += p * d
             else: raise ValueError("something wrong with p")
@@ -280,8 +280,8 @@ class simulation:
             if len(self.args_passed[r]) == 1:
                 lab = list(self.args_passed[r])[0]
                 val = self.args_passed[r][lab]
-                print('t', max(self.t[r]))
-                print('p', self.sum_P[r])
+#                print('t', max(self.t[r]))
+#                print('p', self.sum_P[r])
                 ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
@@ -436,7 +436,9 @@ class simulation:
             rand012 = random.random_sample(self.n_steps[run])
             rand013 = random.random_sample(self.n_steps[run])
             k_min_max = h.get_max_k_min(self.bta[run], self.k[run])
+            print('k_min_max:', k_min_max)
             k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
+            print('k_plus_max:', k_plus_max)
             
             #stretching to desired force
             f = h.forceV(s, p, self.d[run])
@@ -569,6 +571,7 @@ class simulation:
 #                delta_pos = self.v_pull[run] * tau / (1 + n_att / self.k_pull[run])
                 
                 #seems to be -sum_F why????????????????????????????????????????????????????????????????????????????????????????????????????
+                #attention! could be too many subtractions
                 delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
 #                print(delta_pos)
                 s = h.translateV(s, delta_pos)
@@ -586,8 +589,10 @@ class simulation:
                 if h.unitize(p[index]) == 0:
                     ##calculate probability ratio in order to verify head selection
                     #s_tau: s[index] after waiting time tau
-                    s_tau = s[index] + delta_pos
-                    prob = h.int_k_plus_sum(s[index], s_tau, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
+#                    s_tau = s[index] + delta_pos
+                    v = delta_pos / tau
+                    #attention! could be too many subtractions
+                    prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
                 
                     if rand013[i] < prob / (k_plus_max * tau):
                         n_k_p_u +=1
@@ -601,7 +606,8 @@ class simulation:
                     ##calculate probability ratio in order to verify head selection
                     #s_tau: s[index] after waiting time tau
                     s_tau = s[index] + delta_pos
-                    prob = h.int_k_min(s_tau, p[index], self.bta[run], self.k[run]) - h.int_k_min(s[index], p[index], self.bta[run], self.k[run])
+                    v = delta_pos / tau
+                    prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
                     prob = abs(prob)
                 
                     if rand013[i] < abs(prob) / (k_min_max * tau):
@@ -625,12 +631,12 @@ class simulation:
                 
 
                 
-                
-        print('n_k_p_u:', n_k_p_u)
-        print('n_k_p_nu:', n_k_p_nu)
-        print('n_k_m_u:', n_k_m_u)
-        print('n_k_m_nu:', n_k_m_nu)          
-        print('n_dd:', n_dd)          
+        if self.mode[run] == 'springControl':        
+            print('n_k_p_u:', n_k_p_u)
+            print('n_k_p_nu:', n_k_p_nu)
+            print('n_k_m_u:', n_k_m_u)
+            print('n_k_m_nu:', n_k_m_nu)          
+            print('n_dd:', n_dd)          
         #preparing the time vector to be added in first column of each file
         t_w = self.t[run][np.newaxis]
         t_w = t_w.T

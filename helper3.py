@@ -53,11 +53,23 @@ def k_min(s, p, bta, k):
 k_minV = np.vectorize(k_min)
 
 #integral of k_min
-def int_k_min(s, p, bta, k):
+def int_k_min(s1, s2, p, bta, k, v):
     root = np.sqrt(bta / (1 + k))
-    c = np.sqrt(np.pi * (k + 1) / bta) / (4 * bta)
-    var = np.exp(bta * (1 + k) / 4) * (special.erf(root * (1 + k + 2*s) / 2) - special.erf(root * (1 + k - 2*s) / 2))
-    return c * var
+    
+    #                                              -V- this v added brcause of variable change
+    c = np.sqrt(np.pi * (k + 1) / bta) / (4 * bta * v)
+    intt = lambda s: c * (np.exp(bta * (1 + k) / 4) * (special.erf(root * (1 + k + 2*s) / 2) - special.erf(root * (1 + k - 2*s) / 2)))
+    
+    #######################
+#    X = np.linspace(-20, 20, 2560)
+#    D = intt(X)
+#    plt.figure(figsize=(8,6), dpi=80)
+#    plt.subplot(111)
+#    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
+#
+#    plt.show()
+    #######################
+    return abs(intt(s2) - intt(s1))
 
 #attaching rate (+V) to be used with map fcn, either feed already wrapped s in or set w=True!
 def k_plus(s, p, d, bta, k, k_on,  w=True):
@@ -72,7 +84,7 @@ def k_plus(s, p, d, bta, k, k_on,  w=True):
 k_plusV = np.vectorize(k_plus)
 
 #the lambda expression
-def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
+def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     #this is andatory because direction of integration does not matter
     if s2 < s1: s1, s2 = s2, s1
     
@@ -86,10 +98,21 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
     c = 0.5
 #    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
 #    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - (s-d/2))**2)/(spi * b) + np.exp(-b**2 * (c + (s-d/2))**2)/(spi * b) + (s-d/2) * special.erf(b * (c - (s-d/2))) + c * special.erf(b * ((s-d/2) - c)) + c * special.erf(b * (c + (s-d/2))) + (s-d/2) * special.erf(b * (c + (s-d/2))))
-    integralt = lambda s, i : c * k_on / (b * spi) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * (s-d/2) + (s-d/2)**2/2 + c * (i*d + (s-d/2)))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + (s-d/2)))) +
-    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))) +
-    b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))))
     
+    #                                              -V- this v added brcause of variable change
+#    integralt = lambda s, i : c * k_on / (b * spi * v) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * (s-d/2) + (s-d/2)**2/2 + c * (i*d + (s-d/2)))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + (s-d/2)))) +
+#    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))) +
+#    b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))))
+    integralt = lambda s, i : c * k_on / (b * spi * v) * (np.exp(-bta * ((c + i*d + (s-d/2))**2)) - np.exp(-bta * ((-c + i*d + (s-d/2))**2))) + 1/v * c * k_on * ((c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))) - (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))))
+    #######################
+#    X = np.linspace(-2*d, 2*d, 2560)
+#    D = integralt(X, 0)
+#    plt.figure(figsize=(8,6), dpi=80)
+#    plt.subplot(111)
+#    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
+#
+#    plt.show()
+    #######################
     int_full_period = lambda i: integralt(0, i) - integralt(d, i)
     
     if s2tw >= s1tw:
@@ -97,12 +120,12 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, w=False):
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
             
             #AAAACHtung: n oder 0 in lambda???
-            res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d) * int_full_period(n) #// is floor division in python
+            res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d) * int_full_period(n) #// is floor division in python
         return res
     else:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-           res += integralt(s2tw, n) - integralt(s1tw, n) + ((s2t - s1t) // d + 1) * int_full_period(n) #// is floor division in python
+           res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d + 1) * int_full_period(n) #// is floor division in python
         return res
 
 #attaching rate sum, either feed already wrapped s in or set w=True!
@@ -193,7 +216,7 @@ def detach_plot_fcn(s, bta, k):
     return result
 
 def plot_detach():
-    bta = 0.6
+    bta = 2
     k = 10.
     X = np.linspace(-10., 10., 256)
     D = detach_plot_fcn(X, bta, k)
@@ -202,7 +225,7 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-#plot_detach()
+plot_detach()
 
 
 def plot_attach_diff():
@@ -229,7 +252,7 @@ def plot_attach_one():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-#plot_attach_one()
+plot_attach_one()
 
 def plot_attach():
     bta = 2.

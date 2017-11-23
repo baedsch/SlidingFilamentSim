@@ -84,7 +84,7 @@ for f in loadF:
 n = np.array([i+1 for i in range(len(loadF))])
 for rn in n:
 	sim.start_run(rn)
-	sim.sum_up_P(rn)
+	
 sim.plot_pos(n)
 sim.plot_p(n)
 sim.plot_f(n)
