@@ -32,7 +32,7 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.																				
-random.seed(12115)																				
+random.seed(121155)																				
 																								
 #parameters for fControl																		    
 loadF = [10. for i in range(3)]																
@@ -59,7 +59,7 @@ if not len(step_min_val) == len(step_max_val) and mode == 'vControl':
 k_pull = 2500
 v_pull = 5
 
-velocities = [2.5 for i in range(1)]
+velocities = [+2.5 for i in range(1)]
                          																
 #configure mulitprocessing																		
 n_cores = 8																						

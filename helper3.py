@@ -85,8 +85,8 @@ k_plusV = np.vectorize(k_plus)
 
 #the lambda expression
 def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
-    #this is andatory because direction of integration does not matter
-    if s2 < s1: s1, s2 = s2, s1
+    #this is andatory because direction of integration does not matter MEESES UP!
+#    if s2 < s1: s1, s2 = s2, s1
     
     s1t = s1 + d/2
     s1tw = wrapping(s1t, d)
@@ -115,19 +115,30 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     #######################
     int_full_period = lambda i: integralt(0, i) - integralt(d, i)
     
-    if s2tw >= s1tw:
+    if s2tw >= s1tw and s2 > s1:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
             
             #AAAACHtung: n oder 0 in lambda???
             res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d) * int_full_period(n) #// is floor division in python
         return res
-    else:
+    elif s2tw < s1tw and s2 > s1:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
            res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d + 1) * int_full_period(n) #// is floor division in python
         return res
-
+    elif s2tw >= s1tw and s2 < s1:
+        res = 0
+        for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
+            
+            #AAAACHtung: n oder 0 in lambda???
+            res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d + 1) * int_full_period(n) #// is floor division in python
+        return res
+    elif s2tw < s1tw and s2 < s1:
+        res = 0
+        for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
+           res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d) * int_full_period(n) #// is floor division in python
+        return res
 #attaching rate sum, either feed already wrapped s in or set w=True!
 def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     if w: s = wrapping(s, d)
@@ -225,7 +236,7 @@ def plot_detach():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_detach()
+#plot_detach()
 
 
 def plot_attach_diff():
@@ -252,7 +263,7 @@ def plot_attach_one():
     plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
 
     plt.show()
-plot_attach_one()
+#plot_attach_one()
 
 def plot_attach():
     bta = 2.
