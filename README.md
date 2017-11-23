@@ -2,7 +2,7 @@
 
 This software simulates *sliding filaments* [https://en.wikipedia.org/wiki/Sliding_filament_theory](https://en.wikipedia.org/wiki/Sliding_filament_theory)
 
-In collaboration with [https://github.com/FWijanto/SlidingFilamentSimulation](https://github.com/FWijanto/SlidingFilamentSimulation)
+Supervised by [https://github.com/FWijanto/SlidingFilamentSimulation](https://github.com/FWijanto/SlidingFilamentSimulation)
 
 ## How to use:
 1. **Choose operation mode** out of 
