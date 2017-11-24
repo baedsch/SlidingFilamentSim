@@ -190,14 +190,14 @@ class simulation:
     def update_vC(self, s, p, d, r01, run, step, bta, k):
         #update position according to option
         if self.option[run] == 'poly':
-            displ = np.polynomial.polynomial.polyval(step, self.v_Coeff[run])
+            v = np.polynomial.polynomial.polyval(step, self.v_Coeff[run])
         elif self.option[run] == 'step':
-            displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], step)
+            v = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], step)
         elif self.option[run] == 'const':
-            displ = self.v_Coeff[run][0]
+            v = self.v_Coeff[run][0]
         else:
             raise ValueError("error! option: {}".format(self.option[run]))
-        s = h.translate_def(s, displ * self.d_t[run])
+        s = h.translate_def(s, v * self.d_t[run])
 
         #case: unbound
         if h.unitize(p) == 0:
@@ -466,6 +466,8 @@ class simulation:
             f = h.forceV(s, p, self.d[run])
             sum_F = sum(f)
             sum_P = sum(h.unitize(p))
+            
+#            f_pull = self.k_pull[run] * (pos_pull - pos)
 
             #store Variables s, p
             if self.store.get('s'): self.S[run][i] = s
@@ -484,7 +486,9 @@ class simulation:
                     displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
                 elif self.option[run] == 'step':
                     displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
-                pos += displ
+                elif self.option[run] == 'const':
+                    a=1
+                pos += displ *  self.d_t[run]
             elif self.mode[run] == 'fControl':
                 #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
 #                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
@@ -546,17 +550,17 @@ class simulation:
                          n_dd += 1
 #                         break
                 
-                k_upper = []
+                k_upper = np.zeros(self.n_heads[run])
 #                kV = []
                 for hi in range(self.n_heads[run]):
                     #case: unbound
                     if h.unitize(p[hi]) == 0:
 #                        kV.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
-                        k_upper.append(k_plus_max)
+                        k_upper[hi] = k_plus_max
                     #case: bound
                     if h.unitize(p[hi]) == 1:
 #                        kV.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
-                        k_upper.append(k_min_max)
+                        k_upper[hi] = k_min_max
                 k_upper_sum = sum(k_upper)
                 
                 #calc tau
@@ -573,7 +577,8 @@ class simulation:
                 #seems to be -sum_F why????????????????????????????????????????????????????????????????????????????????????????????????????
                 #attention! could be too many subtractions
                 delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
-#                print(delta_pos)
+#                delta_pos = (self.k_pull[run] * pos_pull_upd  + n_att * pos) / (self.k_pull[run] + n_att) - pos
+#                print('delta_pos.....................................................',delta_pos)
                 s = h.translateV(s, delta_pos)
                 pos += delta_pos
                 pos_pull = pos_pull_upd
@@ -592,8 +597,9 @@ class simulation:
 #                    s_tau = s[index] + delta_pos
                     v = delta_pos / tau
                     #attention! could be too many subtractions
+                    
                     prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
-                
+#                    print('prob.......................................', prob)
                     if rand013[i] < prob / (k_plus_max * tau):
                         n_k_p_u +=1
 

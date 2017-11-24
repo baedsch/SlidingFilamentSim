@@ -12,7 +12,7 @@ option = 'poly' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spring_crosscheck_v=2p5'													
+name = 'spring_crosscheck_v=5'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -39,7 +39,7 @@ loadF = [10. for i in range(3)]
 																								
 #parameters for vControl																		    
 	#-> poly option																				
-v_Coeff = [[2.5, 0.] for i in range(3)] #example for constant velocity of 1.										
+v_Coeff = [[30, 0.] for i in range(3)] #example for constant velocity of 1.										
 																								
 	#-> step option																				
 #step_n_jumps = int(n_steps / 1000)															    
