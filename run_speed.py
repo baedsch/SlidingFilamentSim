@@ -132,11 +132,11 @@ if __name__ == '__main__':
                     step_max_val = step_max_val)
     
     velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
-    velocities *= repetitions
     
-   
-    for v in velocities:
-        sim.add_run(v=v)
+    
+    for r in range(repetitions):
+        for v in velocities:
+            sim.add_run(v=v, n_sim=r)
     n = [i+1 for i in range(len(velocities))]
     pool = Pool(processes=n_cores)
     pool.map(sim.start_run, n)

@@ -393,7 +393,7 @@ class simulation:
         ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
         ax.set_xlabel('Total load')
         ax.set_ylabel('velocity [m/s]')
-        ax.set_yscale('log')
+        #ax.set_yscale('log')
         color = c
         
         ax.scatter(self.f_Sum_axis_runs, self.v_axis_runs, color=color, s=5)
@@ -486,6 +486,7 @@ class simulation:
             if self.mode[run] in ['fControl']:
                 rand011 = random.random_sample(self.n_steps[run])
                 rand012 = random.random_sample(self.n_steps[run])
+                n_dd = 0
                 #stretching to desired force
                 f = h.forceV(s, p, self.d[run])
     
@@ -565,6 +566,23 @@ class simulation:
                         displ = self.v[run]
                     pos += displ *  self.d_t[run]
                 elif self.mode[run] == 'fControl':
+                    
+                    #immediate detachment if heads too far away from binding site
+                    for hi in range(self.n_heads[run]):
+                        if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
+                             p[hi] = 0
+                             n_dd += 1
+                    
+                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
+                    n_att = sum(h.unitizeV(p))
+                    #calculate force <-> displacement of filament
+                    if n_att == 0:
+                        print(i)
+                        print("connection broke!")
+                        self.t[run][i:] = t
+                        self.breakindex = i
+                        break
+                    
                     #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
     #                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
     #                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
@@ -596,7 +614,7 @@ class simulation:
                     f_delta = sum(f) - self.loadF[run]
     
     
-                    #calculate number of attached heads
+                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
                     n_att = sum(h.unitizeV(p))
                     #calculate force <-> displacement of filament
                     if n_att == 0:
@@ -705,7 +723,7 @@ class simulation:
                 print('n_k_p_nu:', n_k_p_nu)
                 print('n_k_m_u:', n_k_m_u)
                 print('n_k_m_nu:', n_k_m_nu)          
-                print('n_dd:', n_dd)          
+            if self.mode[run] in ['springControl', 'fControl'] :print('n_dd:', n_dd)          
             #preparing the time vector to be added in first column of each file
             t_w = self.t[run][np.newaxis]
             t_w = t_w.T

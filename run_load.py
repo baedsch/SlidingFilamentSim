@@ -12,7 +12,7 @@ option = 'poly' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'matematica_crosscheck_f=10'													
+name = 'loadcheck__10__direct_detachment'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -24,7 +24,7 @@ writeText = True
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(5e3)																				
+n_steps = int(1e4)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
@@ -32,11 +32,11 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.
-repetitions = 2																			
+repetitions = 150
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10*i for i in range(2)]
+loadF = [10 for i in range(1)]
 															
 																								
 #parameters for vControl																		    
