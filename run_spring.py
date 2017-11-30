@@ -62,7 +62,7 @@ v_pull = 5
 velocities = [30 for i in range(2)]
                          																
 #configure mulitprocessing																		
-n_cores = 8																						
+n_cores = 2																			
 																								
 																								
 #################################################################################################|

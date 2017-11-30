@@ -2,6 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.special as special
+from scipy.optimize import curve_fit
 from numpy import random
 #~ import random
 import math
@@ -32,6 +33,7 @@ class simulation:
         #self.variables GET CHANGED WHITHIN FCN SCOPES!! no globaliyation needed (self. is like global)
         #most values are stored np.arrays nested in lists: for each run, append new array to list
         #within the arrays, axis 0 contains the time, axis 1 stands for the head index
+        self.n_sim = [0]
         self.name = str(name)
         self.run = 0
         self.n_steps = [n_steps]
@@ -59,7 +61,7 @@ class simulation:
         #values should look like this: [c_0, c_1, ..., c_n+1] for n^th polynomial
         self.v_Coeff = [kwargs.get('v_Coeff', [0])]
         self.v = [kwargs.get('v', 0)]
-        self.repetitions = [kwargs.get('repetitions', [1])]
+        self.repetitions = [kwargs.get('repetitions', 1)]
         self.step_n_jumps = [kwargs.get('step_n_jumps', int(n_steps / 1000))]
         self.step_min_val = [kwargs.get('step_min_val', 0.)]
         self.step_max_val = [kwargs.get('step_max_val', 100.)]
@@ -120,16 +122,24 @@ class simulation:
             file.write('initialpvector (pdetached, pattached) {}'.format(self.probabilities_p[0]))
             if mode == 'vControl': file.write('v prescribed from v={} to v={} (adapt the step such that it takes a reasonable time)'.format(self.step_min_val[0], self.step_max_val[0]))
             if mode == 'fControl': file.write('f prescribed from f={} to f={} such that you get total breakdown of all the bridges quickly in the simulation (adapt the step such that it takes a reasonable time)'.format(self.step_min_val[0], self.step_max_val[0]))
-
+        
+        #if filament breaks
+        self.breakindex = [-1]
+        
+        #for step simulation in one run
         self.f_Sum_axis_added = {}
         self.v_axis_added = {}
         self.f_Sum_axis = [[]]
         self.v_axis = [[]]
-   
+        
+        #PART FOR MULTIPLE SIMULATIONS -> add_simulation
+        self.f_Sum_axis_runs = []
+        self.v_axis_runs = []
     
     #similar to __init__
     def add_run(self, **kwargs):
         run = self.run
+        self.n_sim.append(kwargs.get('n_sim', self.n_sim[self.run]))
         self.n_steps.append(kwargs.get('n_steps', self.n_steps[self.run]))
         self.n_heads.append(kwargs.get('n_heads', self.n_heads[self.run]))
         mode = kwargs.get('mode', self.mode[self.run])
@@ -185,10 +195,20 @@ class simulation:
         if self.store.get('sum_f'): self.sum_F.append(np.zeros((self.n_steps[run],1)))
         if self.store.get('sum_p'): self.sum_P.append(np.zeros((self.n_steps[run],1)))
 
-
+        self.breakindex.append(-1)
         self.f_Sum_axis.append([])
         self.v_axis.append([])
-
+    
+    #multiple simulations can be used to organize simulations, new simulation will overwrite all data but the listed down there
+    #attention!!!
+    #might overwright data
+#    def add_simulation(self):
+#        self.n_sim += 1
+#        self.run = 0
+#        #for step simulation in one-run-per-param
+#        self.f_Sum_axis_runs.append([])
+#        self.v_axis_runs.append([])
+    
     # initialize a randomly chosen s (resp. p) as a startvector
     def init_s_rand(self):
         self.s[self.run] = h.random_cont(self.n_heads[self.run], -self.d[self.run]/2, self.d[self.run]/2)
@@ -336,7 +356,7 @@ class simulation:
 
         ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
         ax.set_xlabel('time [s]')
-        ax.set_ylabel('Total load')
+        ax.set_ylabel('Total load normalized')
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -346,7 +366,40 @@ class simulation:
             else: ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-")
         if leg: ax.legend()
         plt.savefig('Sum_f.png', dpi=200)
+    
+    #
+    def plot_f_norm__v(self,leg=False, c='b'):
 
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
+        ax.set_xlabel('velocity [m/s]')
+        ax.set_ylabel('Total load normalized')
+        
+
+        color=c
+        ax.scatter(self.v_axis_runs, self.f_Sum_axis_runs, color=color, s=5)
+        
+        plt.savefig('f_norm__v.png', dpi=200)
+        print(self.f_Sum_axis_runs)
+    
+    #TBA normalization of force!!
+    def plot_v__f_norm(self, leg=False, c='b'):
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
+        ax.set_xlabel('Total load')
+        ax.set_ylabel('velocity [m/s]')
+        ax.set_yscale('log')
+        color = c
+        
+        ax.scatter(self.f_Sum_axis_runs, self.v_axis_runs, color=color, s=5)
+        
+        plt.savefig('v__f_norm.png', dpi=200)
+    
     def plot_pos(self, run, leg=False):
         if isinstance(run, int):
             run = [run]
@@ -416,301 +469,305 @@ class simulation:
         #this loop enables running several runs with one function call -> Multiprocessing
         if isinstance(runs, int): runs = [runs]
         for run in runs:
-            #this this loop enables running repetitions of one run with same parameters
-            for j in range(self.repetitions[run]):
                 
-                s = self.s[run]
-                p = self.p[run]
-                sum_F = 0.
-                pos = 0.
-                pos_pull = 0.
-                t = 0.
-        
-                #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
-                #random numbers for udating (for 'fControl', we need two sets)
-                if self.mode[run] in ['vControl']:
-                    print('rand creates')
-                    rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
-                
-                if self.mode[run] in ['fControl']:
-                    rand011 = random.random_sample(self.n_steps[run])
-                    rand012 = random.random_sample(self.n_steps[run])
-                    #stretching to desired force
-                    f = h.forceV(s, p, self.d[run])
-        
-                    sum_F = sum(f)
-                    #~ print sum_F
-                    n_att = sum(h.unitizeV(p))
-                    #~ print n_att
-                    displ = -(sum_F - self.loadF[run]) / n_att
-                    #~ print displ
-                    s = h.translateV(s, displ)
-                    pos += displ
-                
-                if self.mode[run] in ['springControl']:
-                    n_k_p_u = 0
-                    n_k_p_nu = 0
-                    n_k_m_u = 0
-                    n_k_m_nu = 0
-                    n_dd = 0
-                    
-        #            pos_pull = 0.
-                    rand011 = random.random_sample(self.n_steps[run])
-                    rand012 = random.random_sample(self.n_steps[run])
-                    rand013 = random.random_sample(self.n_steps[run])
-                    k_min_max = h.get_max_k_min(self.bta[run], self.k[run])
-                    print('k_min_max:', k_min_max)
-                    k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
-                    print('k_plus_max:', k_plus_max)
-                    
-                    #stretching to desired force
-                    f = h.forceV(s, p, self.d[run])
-        
-                    sum_F = sum(f)
-                    print(sum_F)
-                    n_att = sum(h.unitizeV(p))
-                    print(n_att)
-                    displ = + sum_F / (n_att + self.k_pull[run])
-                    print(displ)
-                    s = h.translateV(s, displ)
-                    pos += displ
-                #~~~~~~~~~~~~~~END SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~
-                
-                print('having generated rands')
-                print('Pos = {}'.format(pos))
-                #loop over all iteration steps
+            s = self.s[run]
+            p = self.p[run]
+            sum_F = 0.
+            pos = 0.
+            pos_pull = 0.
+            t = 0.
+    
+            #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
+            #random numbers for udating (for 'fControl', we need two sets)
+            if self.mode[run] in ['vControl']:
+                print('rand creates')
+                rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
             
-#                for i in tqdm.tqdm(range(self.n_steps[run])):
-                for i in range(self.n_steps[run]):
-                    #show, how many iterations have already elapsed
-                    #~ if float(i) / self.n_heads[run] in [.1, .2, .5, 1.]:
-                        #~ print str(float(i) / self.n_heads[run] *100) + '% of steps elapsed (run {})'.format(run)
+            if self.mode[run] in ['fControl']:
+                rand011 = random.random_sample(self.n_steps[run])
+                rand012 = random.random_sample(self.n_steps[run])
+                #stretching to desired force
+                f = h.forceV(s, p, self.d[run])
+    
+                sum_F = sum(f)
+                #~ print sum_F
+                n_att = sum(h.unitizeV(p))
+                #~ print n_att
+                displ = -(sum_F - self.loadF[run]) / n_att
+                #~ print displ
+                s = h.translateV(s, displ)
+                pos += displ
+            
+            if self.mode[run] in ['springControl']:
+                n_k_p_u = 0
+                n_k_p_nu = 0
+                n_k_m_u = 0
+                n_k_m_nu = 0
+                n_dd = 0
+                
+    #            pos_pull = 0.
+                rand011 = random.random_sample(self.n_steps[run])
+                rand012 = random.random_sample(self.n_steps[run])
+                rand013 = random.random_sample(self.n_steps[run])
+                k_min_max = h.get_max_k_min(self.bta[run], self.k[run])
+                print('k_min_max:', k_min_max)
+                k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
+                print('k_plus_max:', k_plus_max)
+                
+                #stretching to desired force
+                f = h.forceV(s, p, self.d[run])
+    
+                sum_F = sum(f)
+                print(sum_F)
+                n_att = sum(h.unitizeV(p))
+                print(n_att)
+                displ = + sum_F / (n_att + self.k_pull[run])
+                print(displ)
+                s = h.translateV(s, displ)
+                pos += displ
+            #~~~~~~~~~~~~~~END SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~
+            
+            print('Run {}'.format(run))
+#                print('Pos = {}'.format(pos))
+            #loop over all iteration steps
         
-                    #calculate force, f contains all forces of each head, sum_F is total load on filament
+#                for i in tqdm.tqdm(range(self.n_steps[run])):
+            for i in range(self.n_steps[run]):
+                #show, how many iterations have already elapsed
+                #~ if float(i) / self.n_heads[run] in [.1, .2, .5, 1.]:
+                    #~ print str(float(i) / self.n_heads[run] *100) + '% of steps elapsed (run {})'.format(run)
+    
+                #calculate force, f contains all forces of each head, sum_F is total load on filament
+                f = h.forceV(s, p, self.d[run])
+                sum_F = sum(f)
+                sum_P = sum(h.unitize(p))
+                
+    #            f_pull = self.k_pull[run] * (pos_pull - pos)
+    
+                #store Variables s, p
+                if self.store.get('s'): self.S[run][i] = s
+                if self.store.get('pos'): self.Pos[run][i] = pos
+                if self.store.get('p'): self.P[run][i] = p
+                if self.store.get('f'): self.F[run][i] = f
+                if self.store.get('sum_f'): self.sum_F[run][i] = sum_F
+                if self.store.get('sum_p'): self.sum_P[run][i] = sum_P
+    
+    
+                #update s and p according to mode
+                #self.s and self.p remain unchanged!
+                if self.mode[run] == 'vControl':
+                    s, p = self.updateV_vC(self, s, p, self.d[run], rand01[i], run, i, self.bta[run], self.k[run])
+                    if self.option[run] == 'poly':
+                        displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
+                    elif self.option[run] == 'step':
+                        displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
+                    elif self.option[run] == 'const':
+                        displ = self.v[run]
+                    pos += displ *  self.d_t[run]
+                elif self.mode[run] == 'fControl':
+                    #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
+    #                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
+    #                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
+    #                k_plus_sum = k_plus_mat.sum(axis=1)
+                    k_plus_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
+                    k_min = h.k_minV(s, p, self.bta[run], self.k[run])
+                    k = k_plus_sum + k_min
+                    k_a = list(itertools.accumulate(k))
+                    k_sum = sum(k_plus_sum + k_min)
+    
+                    #find the result for the waiting time
+                    tau = -1 / k_sum * np.log(rand011[i])
+                    
+                    #get index of selected head
+                    min_index = bisect.bisect_left(k_a, k_sum * rand012[i])
+                    s_row = h.s_row(h.wrapping(s[min_index],self.d[run]), self.n_neighbours[run], self.d[run])
+                    k_plus_row = h.k_plus_matrix(s_row, p[min_index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+                    
+                    #update this head, calculate the force difference
+                    s_i, p_i = s[min_index], p[min_index]
+                    
+                        #in case of binding, s gets wrapped and positioned acc to p
+                    s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_row, sum(k_plus_row), run)
+                    s[min_index] = s_upd
+                    p[min_index] = p_upd
+                    
+                    f = h.forceV(s, p, self.d[run])
+    
+                    f_delta = sum(f) - self.loadF[run]
+    
+    
+                    #calculate number of attached heads
+                    n_att = sum(h.unitizeV(p))
+                    #calculate force <-> displacement of filament
+                    if n_att == 0:
+                        print(i)
+                        print("connection broke!")
+                        self.t[run][i:] = t
+                        self.breakindex = i
+                        break
+    
+                    displ = -f_delta / float(n_att)
+    
+                    #updating filament position and s positions
+                    pos += displ
+                    s = h.translateV(s, displ)
+    
+                    #updating the elapsed time
+                    #~ print tau_min
+                    t += tau
+                    self.t[run][i] = t
+                
+                #main procedure for springControl
+                elif self.mode[run] == 'springControl':
+                    #immediate detachment if heads too far away from binding site
+                    for hi in range(self.n_heads[run]):
+                        if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
+                             p[hi] = 0
+                             n_dd += 1
+    
+                    #upper prospensity bound
+                    k_upper = np.zeros(self.n_heads[run])
+    #                kV = []
+                    for hi in range(self.n_heads[run]):
+                        #case: unbound
+                        if h.unitize(p[hi]) == 0:
+    #                        kV.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
+                            k_upper[hi] = k_plus_max
+                        #case: bound
+                        if h.unitize(p[hi]) == 1:
+    #                        kV.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
+                            k_upper[hi] = k_min_max
+                    k_upper_sum = sum(k_upper)
+                    
+                    #calc tau
+                    tau = - np.log(rand011[i]) / k_upper_sum
+                    t += tau
+                    self.t[run][i] = t
+                    
+                    
+                    ##displacements during waiting time
+                    pos_pull_upd = pos_pull + self.v_pull[run] * tau
+                    n_att = sum(h.unitizeV(p))
+                    
+                    #attention! could be too many subtractions
+                    delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
+                    #apply translation
+                    s = h.translateV(s, delta_pos)
+                    pos += delta_pos
+                    pos_pull = pos_pull_upd
+                    
+                    #get index of update candidate
+                    k_upper_accumulated = np.add.accumulate(k_upper)
+                    index = bisect.bisect_left(k_upper_accumulated, k_upper_sum * rand012[i])
+                    n_att = sum(h.unitizeV(p))
+                    
+                    s_i, p_i = s[index], p[index]
+                    #case: unbound
+                    if h.unitize(p[index]) == 0:
+                        ##calculate probability ratio in order to verify head selection
+                        v = delta_pos / tau
+                        #attention! could be too many subtractions
+                        prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
+                        if rand013[i] < prob / (k_plus_max * tau):
+                            n_k_p_u +=1
+    
+                            s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
+                            k_plus_row = h.k_plus_matrix(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+                            s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
+                        else: n_k_p_nu +=1
+                    #case: bound
+                    else:
+                        ##calculate probability ratio in order to verify head selection
+                        #average velocity during waiting time(for integration in prob)
+                        v = delta_pos / tau
+                        prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
+                        prob = abs(prob)
+                    
+                        if rand013[i] < abs(prob) / (k_min_max * tau):
+                            n_k_m_u +=1
+                            s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
+                        else: n_k_m_nu +=1
+                        
+                    s_upd, p_upd = s[index], p[index]
+                    n_att_upd = sum(h.unitizeV(p))
+                    
+                    #jump of filament due to attachment / detatchment
                     f = h.forceV(s, p, self.d[run])
                     sum_F = sum(f)
-                    sum_P = sum(h.unitize(p))
+                    pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
+                    jump = pos_upd - pos
+                    #apply translation (jump)
+                    s = h.translateV(s, jump)
+                    pos = pos_upd
+                
+            if self.mode[run] == 'springControl':        
+                print('n_k_p_u:', n_k_p_u)
+                print('n_k_p_nu:', n_k_p_nu)
+                print('n_k_m_u:', n_k_m_u)
+                print('n_k_m_nu:', n_k_m_nu)          
+                print('n_dd:', n_dd)          
+            #preparing the time vector to be added in first column of each file
+            t_w = self.t[run][np.newaxis]
+            t_w = t_w.T
+            
+            if self.option[run] == 'const':
+                self.average_norm_force_single(run)
+            if self.mode[run] == 'fControl':
+                self.average_velocity_single(run)
+            
+            #writing the results to textfiles
+            if self.writeText:
+                if self.mode[run] == 'vControl' and self.option[run] == 'const':
+                        np.savetxt('time_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), t_w, header='time')
+                elif self.mode[run] == 'fControl':
+                    np.savetxt('time_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), t_w, header='time')
+                else:
+                    np.savetxt('time_{}_{}.dat'.format(run, self.n_sim[run]), t_w, header='time')
                     
-        #            f_pull = self.k_pull[run] * (pos_pull - pos)
-        
-                    #store Variables s, p
-                    if self.store.get('s'): self.S[run][i] = s
-                    if self.store.get('pos'): self.Pos[run][i] = pos
-                    if self.store.get('p'): self.P[run][i] = p
-                    if self.store.get('f'): self.F[run][i] = f
-                    if self.store.get('sum_f'): self.sum_F[run][i] = sum_F
-                    if self.store.get('sum_p'): self.sum_P[run][i] = sum_P
-        
-        
-                    #update s and p according to mode
-                    #self.s and self.p remain unchanged!
-                    if self.mode[run] == 'vControl':
-                        s, p = self.updateV_vC(self, s, p, self.d[run], rand01[i], run, i, self.bta[run], self.k[run])
-                        if self.option[run] == 'poly':
-                            displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
-                        elif self.option[run] == 'step':
-                            displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
-                        elif self.option[run] == 'const':
-                            displ = self.v[run]
-                        pos += displ *  self.d_t[run]
-                    elif self.mode[run] == 'fControl':
-                        #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
-        #                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
-        #                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
-        #                k_plus_sum = k_plus_mat.sum(axis=1)
-                        k_plus_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
-                        k_min = h.k_minV(s, p, self.bta[run], self.k[run])
-                        k = k_plus_sum + k_min
-                        k_a = list(itertools.accumulate(k))
-                        k_sum = sum(k_plus_sum + k_min)
-        
-                        #find the result for the waiting time
-                        tau = -1 / k_sum * np.log(rand011[i])
-                        
-                        #get index of selected head
-                        min_index = bisect.bisect_left(k_a, k_sum * rand012[i])
-                        s_row = h.s_row(h.wrapping(s[min_index],self.d[run]), self.n_neighbours[run], self.d[run])
-                        k_plus_row = h.k_plus_matrix(s_row, p[min_index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
-                        
-                        #update this head, calculate the force difference
-                        s_i, p_i = s[min_index], p[min_index]
-                        
-                            #in case of binding, s gets wrapped and positioned acc to p
-                        s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_row, sum(k_plus_row), run)
-                        s[min_index] = s_upd
-                        p[min_index] = p_upd
-                        
-                        f = h.forceV(s, p, self.d[run])
-        
-                        f_delta = sum(f) - self.loadF[run]
-        
-        
-                        #calculate number of attached heads
-                        n_att = sum(h.unitizeV(p))
-                        #calculate force <-> displacement of filament
-                        if n_att == 0:
-                            print(i)
-                            print("connection broke!")
-                            self.t[run][i:] = t
-                            break
-        
-                        displ = -f_delta / float(n_att)
-        
-                        #updating filament position and s positions
-                        pos += displ
-                        s = h.translateV(s, displ)
-        
-                        #updating the elapsed time
-                        #~ print tau_min
-                        t += tau
-                        self.t[run][i] = t
-                    
-                    #main procedure for springControl
-                    elif self.mode[run] == 'springControl':
-                        #immediate detachment if heads too far away from binding site
-                        for hi in range(self.n_heads[run]):
-                            if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
-                                 p[hi] = 0
-                                 n_dd += 1
-        
-                        #upper prospensity bound
-                        k_upper = np.zeros(self.n_heads[run])
-        #                kV = []
-                        for hi in range(self.n_heads[run]):
-                            #case: unbound
-                            if h.unitize(p[hi]) == 0:
-        #                        kV.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
-                                k_upper[hi] = k_plus_max
-                            #case: bound
-                            if h.unitize(p[hi]) == 1:
-        #                        kV.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
-                                k_upper[hi] = k_min_max
-                        k_upper_sum = sum(k_upper)
-                        
-                        #calc tau
-                        tau = - np.log(rand011[i]) / k_upper_sum
-                        t += tau
-                        self.t[run][i] = t
-                        
-                        
-                        ##displacements during waiting time
-                        pos_pull_upd = pos_pull + self.v_pull[run] * tau
-                        n_att = sum(h.unitizeV(p))
-                        
-                        #attention! could be too many subtractions
-                        delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
-                        #apply translation
-                        s = h.translateV(s, delta_pos)
-                        pos += delta_pos
-                        pos_pull = pos_pull_upd
-                        
-                        #get index of update candidate
-                        k_upper_accumulated = np.add.accumulate(k_upper)
-                        index = bisect.bisect_left(k_upper_accumulated, k_upper_sum * rand012[i])
-                        n_att = sum(h.unitizeV(p))
-                        
-                        s_i, p_i = s[index], p[index]
-                        #case: unbound
-                        if h.unitize(p[index]) == 0:
-                            ##calculate probability ratio in order to verify head selection
-                            v = delta_pos / tau
-                            #attention! could be too many subtractions
-                            prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
-                            if rand013[i] < prob / (k_plus_max * tau):
-                                n_k_p_u +=1
-        
-                                s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
-                                k_plus_row = h.k_plus_matrix(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
-                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
-                            else: n_k_p_nu +=1
-                        #case: bound
-                        else:
-                            ##calculate probability ratio in order to verify head selection
-                            #average velocity during waiting time(for integration in prob)
-                            v = delta_pos / tau
-                            prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
-                            prob = abs(prob)
-                        
-                            if rand013[i] < abs(prob) / (k_min_max * tau):
-                                n_k_m_u +=1
-                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
-                            else: n_k_m_nu +=1
-                            
-                        s_upd, p_upd = s[index], p[index]
-                        n_att_upd = sum(h.unitizeV(p))
-                        
-                        #jump of filament due to attachment / detatchment
-                        f = h.forceV(s, p, self.d[run])
-                        sum_F = sum(f)
-                        pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
-                        jump = pos_upd - pos
-                        #apply translation (jump)
-                        s = h.translateV(s, jump)
-                        pos = pos_upd
-                    
-                if self.mode[run] == 'springControl':        
-                    print('n_k_p_u:', n_k_p_u)
-                    print('n_k_p_nu:', n_k_p_nu)
-                    print('n_k_m_u:', n_k_m_u)
-                    print('n_k_m_nu:', n_k_m_nu)          
-                    print('n_dd:', n_dd)          
-                #preparing the time vector to be added in first column of each file
-                t_w = self.t[run][np.newaxis]
-                t_w = t_w.T
-    
-                #writing the results to textfiles
-                if self.writeText:
+                if self.store.get('s'):
+                    print('Store S')
+                    S_out = np.concatenate((t_w, self.S[run]), axis=1)
+                    np.savetxt('S_{}_{}.dat'.format(run, self.n_sim[run]), S_out, header='time, Position of each head')
+                if self.store.get('pos'):
+                    print('Store Pos')
+                    Pos_out = np.concatenate((t_w, self.Pos[run]), axis=1)
+                    np.savetxt('Pos_{}_{}.dat'.format(run, self.n_sim[run]), Pos_out, header='time, Position of filament')
+                if self.store.get('p'):
+                    print('Store P')
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                            np.savetxt('time_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], j), t_w, header='time')
+                        np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.P[run], header='time, force applied by each head')
                     elif self.mode[run] == 'fControl':
-                        np.savetxt('time_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], j), t_w, header='time')
+                        np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.P[run], header='time, force applied by each head')
                     else:
-                        np.savetxt('time_{}_{}.dat'.format(run, j), t_w, header='time')
-                        
-                    if self.store.get('s'):
-                        print('Store S')
-                        S_out = np.concatenate((t_w, self.S[run]), axis=1)
-                        np.savetxt('S_{}_{}.dat'.format(run, j), S_out, header='time, Position of each head')
-                    if self.store.get('pos'):
-                        print('Store Pos')
-                        Pos_out = np.concatenate((t_w, self.Pos[run]), axis=1)
-                        np.savetxt('Pos_{}_{}.dat'.format(run, j), Pos_out, header='time, Position of filament')
-                    if self.store.get('p'):
-                        print('Store P')
-                        if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                            np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], j), self.P[run], header='time, force applied by each head')
-                        elif self.mode[run] == 'fControl':
-                            np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], j), self.P[run], header='time, force applied by each head')
-                        else:
-                            P_out = np.concatenate((t_w, self.P[run]), axis=1)
-                            np.savetxt('P_{}_{}.dat'.format(run, j), P_out, header='time, binding state of each head')
-                    if self.store.get('f'):
-                        print('Store F')
-                        if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                            np.savetxt('f_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], j), self.F[run], header='time, force applied by each head')
-                        elif self.mode[run] == 'fControl':
-                            np.savetxt('f_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], j), self.F[run], header='time, force applied by each head')
-                        else:
-                            F_out = np.concatenate((t_w, self.F[run]), axis=1)
-                            np.savetxt('sum_F_{}_Run_{}.dat'.format(run, j), F_out, header='time, force applied by each head')
-    
-                    if self.store.get('sum_f'):
-                        if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                            np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], j), self.sum_F[run], header='time, force applied by each head')
-                        elif self.mode[run] == 'fControl':
-                            np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], j), self.sum_F[run], header='time, force applied by each head')
-                        else:
-                            sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
-                            np.savetxt('sum_F_{}_{}.dat'.format(run, j), sum_F_out, header='time, force applied by each head')
-                    
-                    if self.store.get('sum_p'):
-                        if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                            np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], j), self.sum_P[run], header='heads attached')
-                        elif self.mode[run] == 'fControl':
-                            np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], j), self.sum_P[run], header='heads attached')
-                        else:
-                            sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
-                            np.savetxt('sum_P_{}_{}.dat'.format(run, j), sum_F_out, header='heads attached')
+                        P_out = np.concatenate((t_w, self.P[run]), axis=1)
+                        np.savetxt('P_{}_{}.dat'.format(run, self.n_sim[run]), P_out, header='time, binding state of each head')
+                if self.store.get('f'):
+                    print('Store F')
+                    if self.mode[run] == 'vControl' and self.option[run] == 'const':
+                        np.savetxt('f_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.F[run], header='time, force applied by each head')
+                    elif self.mode[run] == 'fControl':
+                        np.savetxt('f_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.F[run], header='time, force applied by each head')
+                    else:
+                        F_out = np.concatenate((t_w, self.F[run]), axis=1)
+                        np.savetxt('sum_F_{}_Run_{}.dat'.format(run, self.n_sim[run]), F_out, header='time, force applied by each head')
+
+                if self.store.get('sum_f'):
+                    if self.mode[run] == 'vControl' and self.option[run] == 'const':
+                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_F[run], header='time, force applied by each head')
+                    elif self.mode[run] == 'fControl':
+                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.sum_F[run], header='time, force applied by each head')
+                    else:
+                        sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
+                        np.savetxt('sum_F_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='time, force applied by each head')
+                
+                if self.store.get('sum_p'):
+                    if self.mode[run] == 'vControl' and self.option[run] == 'const':
+                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_P[run], header='heads attached')
+                    elif self.mode[run] == 'fControl':
+                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.sum_P[run], header='heads attached')
+                    else:
+                        sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
+                        np.savetxt('sum_P_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='heads attached')
         
 #        return s, p
         return 1
@@ -722,9 +779,57 @@ class simulation:
             j.start()
         for j in self.jobs:
             j.join()
-
+    
+    #get the asymptotic force value for one run
+    def average_norm_force_single(self, run, equilib_wait_frac=0.25):
+        n = len(self.sum_F[run])
+        print(sum(self.sum_F[run]))
+        f_mean = np.mean(self.sum_F[run][(int(n * equilib_wait_frac)):])
+        print(f_mean)
+        self.f_Sum_axis_runs.append(f_mean / self.n_heads[run])
+        self.v_axis_runs.append(self.v[run])
+        
+        while True: 
+            try:
+                with open('F_v.dat', 'a') as f:
+                    f.write("{} {}\n".format(self.v[run], f_mean / self.n_heads[run]))
+                break
+            except: print("have to wait for textfile")
+            
+        return f_mean / self.n_heads[run], self.v[run]
+    
+    #fit function for velovity fit
+#    def lin_fit(self, x, a, t):
+#        return a * x + t
+    
+    #get the asymptotic velocity value for one run
+    def average_velocity_single(self, run, equilib_wait_frac=0.25):
+        #case no break
+        if self.breakindex[run] == -1: n = self.n_steps[run]
+        #case break: only take data up to breakindex into account
+        else: n = self.breakindex[run]
+        
+        t = np.array(self.t[run][int(n * equilib_wait_frac):n])
+        pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
+        if not len(t) == len(pos): print('fffffffffffffffeeeeeeeeeeeeeeeeeehhhhhhhhhhhhhlllllllllllleeeeeeeeeeeerrrr')
+        print (len(t),pos)
+        popt, pcov = curve_fit(h.lin_fit, t, pos)
+        v = popt[0]
+        
+        self.f_Sum_axis_runs.append(self.loadF[run])
+        self.v_axis_runs.append(v)
+        
+        while True: 
+            try:
+                with open('v_F.dat', 'a') as f:
+                    f.write("{} {}\n".format(self.loadF[run], v))
+                break
+            except: print("have to wait for textfile")
+            
+        return 1
+    
 	#get the asymptotic value for each step of v_step
-    def average_norm_force(self, run, f_Sum, v_step_list, equilib_wait_frac=0.2):
+    def average_norm_force(self, run, f_Sum, v_step_list, equilib_wait_frac=0.25):
 
         counter = collections.Counter(v_step_list)
         print(len(v_step_list))
@@ -752,441 +857,6 @@ class simulation:
             self.v_axis_added[index] += self.v_axis[e]
         #~ print(self.f_Sum_axis_added)
         #~ print(self.v_axis_added)
-
-#initialization
-
-#################################################################################################|
-
-#mode = 'vControl' #choose from ['vControl', 'fControl', ]
-#option = 'poly' #for fControl choose from xy			
-#				#for vControl choose from 													
-#				#						-> poly: specify coefficients						
-#				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-#name = 'spread_check_newUpdateFcn_v=10'													
-#																								
-##store data in ram / write them to text files?													
-#s_store = False																					
-#p_store = True																					
-#f_store = False																					
-#sum_f_store = True																				
-#pos_store = True																			     	
-#writeText = True																				
-#																								
-##most important parameters																		
-#n_heads = int(1e2)																			
-#n_steps = int(1e4)																				
-#d_t = 5e-3																						
-#bta = 2.																						
-#k = 10.
-#k_on = 10.																						
-#th = 0.01																						
-#t0 = 0.																						
-#d = 2.																				
-#random.seed(12115)																				
-#																								
-##parameters for fControl																		    
-#loadF = [10. for i in range(50)]																
-#																								
-##parameters for vControl																		    
-#	#-> poly option																				
-#v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
-#																								
-#	#-> step option																				
-##step_n_jumps = int(n_steps / 1000)															    
-#colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
-##step_n_jumps = [25.,25]																		    
-##step_min_val = [0., 0.05]																		
-##step_max_val = [0.05, 0.2]
-#step_n_jumps = [25., 25.]																		    
-#step_min_val = [0., 0.05]																		
-#step_max_val = [0.05, 0.2]
-#																		
-##step_factors = [1, 3]																		    
-#if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    
-#	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
-#                                    																
-##configure mulitprocessing																		
-#n_cores = 8																						
-#																								
-																								
-#################################################################################################|
-
-time_before = tme.time()
-
-#sim = simulation(	mode,
-#					n_steps,
-#					n_heads,
-#					name = name,
-#					option = option,
-#					loadF = loadF,
-#					v_Coeff = v_Coeff,
-#					step_n_jumps = step_n_jumps[0],
-#					step_min_val = step_min_val[0],
-#					step_max_val = step_max_val[0],
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#					bta = bta,
-#					k = k,
-#					k_on = k_on,
-#					th = th,
-#					d_t = d_t,
-#					d = d[0])
-
-
-########### trying mult. possibilities for initial p vectors
-#probabilities_p = [[a / 10., round(1.- a / 10., 2)] for a in range(11)]
-#for p in probabilities_p:
-	#sim.add_run(probabilities_p=p)
-############################################################
-
-
-
-########### MULTIPLE RUN, DIFF LOAD SNIPPET
-#for f in loadF:
-	#sim.add_run(loadF=f)
-#n = np.array([i+1 for i in range(len(loadF))])
-#for rn in n:
-	#sim.start_run(rn)
-	#sim.sum_up_P(rn)
-#sim.plot_pos(n)
-#sim.plot_p(n)
-#sim.plot_f(n)
-###########################################
-
-########### MULTIPLE RUN, GIVEN LOAD SNIPPET
-
-#sim = simulation(mode,
-#					n_steps,
-#					n_heads,
-#					name = name,
-#					option = option,
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#                    s=[-0.5093321181141888,
-# -0.681112344058524,
-# -0.43202495465981317,
-# 0.18293457146938286,
-# -0.07648946416162383,
-# 0.0020131366483209234,
-# 0.7841875980533466,
-# -0.836000543754047,
-# 0.8862758367210133,
-# 0.955243017716624,
-# 0.30520312457143906,
-# -0.7085465721847561,
-# 0.10941748646789184,
-# -0.8946966128222149,
-# 0.3431225721368336,
-# -0.6103248804183066,
-# -0.6960484816709815,
-# 0.05167743248455414,
-# -0.805766551928107,
-# -0.994261895312988,
-# 0.8344591021204155,
-# 0.26579268456393734,
-# 0.7500856423295263,
-# 0.17902426065431376,
-# 0.049952543761914825,
-# -0.7399771824461432,
-# 0.8911813859325814,
-# -0.3670218949323254,
-# -0.5223444061111566,
-# 0.34433510589547867,
-# 0.3414039706038121,
-# 0.11184830003806967,
-# 0.4053260408003907,
-# -0.21557540261892472,
-# -0.1915320482997407,
-# 0.6610736513760944,
-# -0.8373102647544042,
-# 0.0026973100555971463,
-# -0.7816199229825243,
-# 0.9225985630042488,
-# 0.1527286424585581,
-# -0.5054191388726386,
-# 0.8894578129744648,
-# 0.8592876228256374,
-# -0.12785791063496355,
-# 0.9589658606470359,
-# 0.013603278692741139,
-# -0.4806013853679625,
-# 0.07005950385046589,
-# -0.2444753727770168,
-# 0.6084573043038168,
-# -0.05073624008745581,
-# -0.22270332344843347,
-# -0.35624827117441304,
-# 0.15715937867216034,
-# -0.24048648185094823,
-# -0.040733292041214675,
-# 0.44285470846251185,
-# -0.773277180886895,
-# 0.1047267059846444,
-# -0.06091804486023378,
-# 0.5548010367895637,
-# -0.7032465006254927,
-# 0.9327979001490219,
-# 0.034043987636752426,
-# -0.40507341944797703,
-# -0.8247322717155448,
-# -0.3087786845253033,
-# 0.9102394086303232,
-# 0.7167205890608286,
-# 0.17575002158560338,
-# 0.3535255894105571,
-# -0.4152856822858988,
-# -0.69980763723219,
-# -0.27043155572008004,
-# 0.017456030697633462,
-# 0.6194463131852475,
-# -0.4137566355131126,
-# -0.4441269188495873,
-# 0.0022962809325641764,
-# 0.04099026325252364,
-# -0.5336165459618716,
-# 0.6085306884075035,
-# 0.5674714895429434,
-# -0.8600798550584341,
-# -0.23681256478990242,
-# -0.3201486237050797,
-# 0.8976762901719453,
-# -0.33937340483300105,
-# 0.19689259978727147,
-# -0.495425478757904,
-# -0.577326082305456,
-# -0.6660334311243008,
-# -0.4861756887615396,
-# 0.6758157766871551,
-# 0.1356911249572419,
-# -0.7569920663189604,
-# 0.9943903827899554,
-# -0.4206005447393233,
-# 0.5878676243794425],
-#                    p=[1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 0.0,
-# 1.0,
-# 0.0,
-# 1.0,
-# 1.0,
-# 1.0,
-# 0.0,
-# 0.0],
-#					bta = bta,
-#					k = k,
-#                        k_on = k_on,
-#					th = th,
-#					d_t = d_t,
-#					d = d)
-#for f in loadF:
-#	sim.add_run(loadF=f)
-#n = np.array([i+1 for i in range(len(loadF))])
-#for rn in n:
-#	sim.start_run(rn)
-#	sim.sum_up_P(rn)
-#sim.plot_pos(n)
-#sim.plot_p(n)
-#sim.plot_f(n)
-###########################################
-
-########### MULTIPLE RUN, GIVEN VELOCITY SNIPPET
-
-#sim = simulation(mode,
-#					n_steps,
-#					n_heads,
-#					name = name,
-#					option = option,
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#					bta = bta,
-#					k = k,
-#                        k_on = k_on,
-#					th = th,
-#					d_t = d_t,
-#					d = d)
-#for f in v_Coeff:
-#	sim.add_run(v_Coeff=f)
-#n = np.array([i+1 for i in range(len(v_Coeff))])
-#for rn in n:
-#	sim.start_run(rn)
-#	sim.sum_up_P(rn)
-#sim.plot_pos(n)
-#sim.plot_p(n)
-#sim.plot_f(n)
-###########################################
-
-########### ONE SINGLE RUN SNIPPET
-#sim.start_run(0)
-#sim.sum_up_P(0)
-#sim.plot_f(0)
-#sim.plot_p(0)
-#sim.plot_pos(0)
-
-##################################
-
-########### ONE SINGLE RUN SNIPPET WITH F-v fcn
-#sim.start_run(0)
-#sim.sum_up_P(0)
-#sim.average_norm_force(0, sim.sum_F[0], h.step_list(n_steps, step_n_jumps[0], step_min_val[0], step_max_val[0])) #returns v, f axis, needs processing
-#sim.plot_f(0)
-#sim.plot_p(0)
-#sim.plot_pos(0)
-#sim.plot_f_v_step(0)
-#sim.plot_v_step(0)
-###############################################
-
-########### MULTIPLE RUN SNIPPET WITH F-v fcn
-#sim = simulation(	mode,
-#					n_steps,
-#					n_heads[0],
-#					name = name,
-#					option = option,
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#					bta = bta,
-#					k = k,
-#					th = th,
-#					d_t = d_t,
-#					d = d)
-#z=1
-#y=1
-#indices = []
-#for var1 in n_heads:
-#    runs = []
-#
-#    for varis in range(len(step_max_val)):
-#        sim.add_run(    n_heads = var1,
-#                step_n_jumps = step_n_jumps[varis],
-#                        step_min_val = step_min_val[varis],
-#                        step_max_val = step_max_val[varis],
-#                        )
-#        sim.init_p_rand()
-#        sim.init_s_rand()
-#        sim.start_run(y)
-#        sim.sum_up_P(y)
-#
-#        sim.average_norm_force(y, sim.sum_F[y], h.step_list(n_steps, step_n_jumps[varis], step_min_val[varis], step_max_val[varis]), equilib_wait_frac=0.25) #returns v, f axis, needs processing
-#        runs.append(y)
-#        y += 1
-#
-#    sim.join_steps(runs, z)
-#
-#    i=[v +z for v in range(len(step_max_val))]
-#
-#
-#
-#    indices.append(z)
-#    z += 1
-#sim.plot_f_v_step(indices, c=colors, leg=True, legvar='n_heads', legval=n_heads)
-#print(sim.f_Sum_axis_added, sim.v_axis_added)
-###############################################
-
-
-time_after = tme.time()
-print(time_after - time_before)
-print('Seconds')
 
 
 #if __name__ == '__main__':

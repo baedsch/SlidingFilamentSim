@@ -24,18 +24,20 @@ writeText = True
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e4)																				
+n_steps = int(5e3)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
 k_on = 10.																						
 th = 0.01																						
 t0 = 0.																						
-d = 2.																				
+d = 2.
+repetitions = 2																			
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10. for i in range(3)]																
+loadF = [10*i for i in range(2)]
+															
 																								
 #parameters for vControl																		    
 	#-> poly option																				
@@ -79,12 +81,13 @@ sim = simulation(mode,
 					th = th,
 					d_t = d_t,
 					d = d)
-for f in loadF:
-	sim.add_run(loadF=f)
-n = np.array([i+1 for i in range(len(loadF))])
+for r in range(repetitions):
+    for f in loadF:
+        sim.add_run(loadF=f, n_sim=r)
+n = [i+1 for i in range(len(loadF) * repetitions)]
 for rn in n:
 	sim.start_run(rn)
-	
+sim.plot_v__f_norm()
 sim.plot_pos(n)
 sim.plot_p(n)
 sim.plot_f(n)

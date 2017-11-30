@@ -400,3 +400,6 @@ def random_cont(length, lower, upper):
     for n in range(length):
         res = np.append(res, interval * random.random() - interval / 2.)
     return res
+
+def lin_fit(x, a, t):
+    return a * x + t

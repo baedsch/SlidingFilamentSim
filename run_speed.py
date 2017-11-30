@@ -24,7 +24,7 @@ f_store = True
 sum_f_store = True																				
 sum_p_store = True																				
 pos_store = True																			     	
-writeText = True																			
+writeText = False																			
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
@@ -36,7 +36,7 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.
-repetitions = 3																		
+repetitions = 10																		
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
@@ -48,18 +48,18 @@ v_Coeff = [[30, 0.] for i in range(3)] #example for constant velocity of 1.
 																								
 	#-> step option																				
 #step_n_jumps = int(n_steps / 1000)															    
-colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
+colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 #step_n_jumps = [25.,25]																		    
-#step_min_val = [0., 0.05]																		
+#step_min_val = [0., 0.05]
 #step_max_val = [0.05, 0.2]
 #step_n_jumps = [25., 25.]																		    
 #step_min_val = [0., 0.05]																		
 #step_max_val = [0.05, 0.2]
 
     #-> const option																			
-step_n_jumps = 4																	    
-step_min_val = 0																		
-step_max_val = 4 
+step_n_jumps = 25															    
+step_min_val = 0
+step_max_val = 1000
 
   
 #step_factors = [1, 3]																		    
@@ -68,7 +68,7 @@ if option == 'poly':
         raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
                                     																
 #configure mulitprocessing																		
-n_cores = 2																						
+n_cores = 1 																			
 																								
 																								
 #################################################################################################|
@@ -125,19 +125,25 @@ if __name__ == '__main__':
     					th = th,
     					d_t = d_t,
     					d = d,
-                    repetitions = repetitions,
+                    v = 0,
+                    repetitions = 1,
                     step_n_jumps = step_n_jumps,
                     step_min_val = step_min_val,
                     step_max_val = step_max_val)
     
     velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+    velocities *= repetitions
     
+   
     for v in velocities:
-    	sim.add_run(v_Coeff=v)
+        sim.add_run(v=v)
     n = [i+1 for i in range(len(velocities))]
-    pool = Pool(processes=4)
+    pool = Pool(processes=n_cores)
     pool.map(sim.start_run, n)
-
+#    for nr in n: sim.start_run(nr)
+#    for i in n:
+#        res = sim.average_norm_force_single(i)
+    sim.plot_f_norm__v()
 #    Processes = []
 #    
 #    

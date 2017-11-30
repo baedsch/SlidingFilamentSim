@@ -2,6 +2,7 @@ import numpy as np
 from numpy import random
 import time as tme
 from simulation3 import simulation#, Consumer#, varstep_sim
+import helper3 as h
 
 #initialization
 
@@ -185,52 +186,52 @@ sim.plot_f(n)
 ###############################################
 
 ########### MULTIPLE RUN SNIPPET WITH F-v fcn
-#sim = simulation(	mode,
-#					n_steps,
-#					n_heads[0],
-#					name = name,
-#					option = option,
-#					s_store = s_store,
-#					f_store = f_store,
-#					f_sum_store = sum_f_store,
-#					pos_store = pos_store,
-#					writeText = writeText,
-#					bta = bta,
-#					k = k,
-#					th = th,
-#					d_t = d_t,
-#					d = d)
-#z=1
-#y=1
-#indices = []
-#for var1 in n_heads:
-#    runs = []
-#
-#    for varis in range(len(step_max_val)):
-#        sim.add_run(    n_heads = var1,
-#                step_n_jumps = step_n_jumps[varis],
-#                        step_min_val = step_min_val[varis],
-#                        step_max_val = step_max_val[varis],
-#                        )
-#        sim.init_p_rand()
-#        sim.init_s_rand()
-#        sim.start_run(y)
-#        sim.sum_up_P(y)
-#
-#        sim.average_norm_force(y, sim.sum_F[y], h.step_list(n_steps, step_n_jumps[varis], step_min_val[varis], step_max_val[varis]), equilib_wait_frac=0.25) #returns v, f axis, needs processing
-#        runs.append(y)
-#        y += 1
-#
-#    sim.join_steps(runs, z)
-#
-#    i=[v +z for v in range(len(step_max_val))]
-#
-#
-#
-#    indices.append(z)
-#    z += 1
-#sim.plot_f_v_step(indices, c=colors, leg=True, legvar='n_heads', legval=n_heads)
-#print(sim.f_Sum_axis_added, sim.v_axis_added)
+sim = simulation(	mode,
+					n_steps,
+					n_heads[0],
+					name = name,
+					option = option,
+					s_store = s_store,
+					f_store = f_store,
+					f_sum_store = sum_f_store,
+					pos_store = pos_store,
+					writeText = writeText,
+					bta = bta,
+					k = k,
+					th = th,
+					d_t = d_t,
+					d = d)
+z=1
+y=1
+indices = []
+for var1 in n_heads:
+    runs = []
+
+    for varis in range(len(step_max_val)):
+        sim.add_run(    n_heads = var1,
+                step_n_jumps = step_n_jumps[varis],
+                        step_min_val = step_min_val[varis],
+                        step_max_val = step_max_val[varis],
+                        )
+        sim.init_p_rand()
+        sim.init_s_rand()
+        sim.start_run(y)
+        sim.sum_up_P(y)
+
+        sim.average_norm_force(y, sim.sum_F[y], h.step_list(n_steps, step_n_jumps[varis], step_min_val[varis], step_max_val[varis]), equilib_wait_frac=0.25) #returns v, f axis, needs processing
+        runs.append(y)
+        y += 1
+
+    sim.join_steps(runs, z)
+
+    i=[v +z for v in range(len(step_max_val))]
+
+
+
+    indices.append(z)
+    z += 1
+sim.plot_f_v_step(indices, c=colors, leg=True, legvar='n_heads', legval=n_heads)
+print(sim.f_Sum_axis_added, sim.v_axis_added)
 ###############################################
 
 
