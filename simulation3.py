@@ -478,7 +478,7 @@ class simulation:
             t = 0.
     
             #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
-            #random numbers for udating (for 'fControl', we need two sets)
+            #random numbers for udating (for 'fControl', we need two sets, for springControl three)
             if self.mode[run] in ['vControl']:
                 print('rand creates')
                 rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
@@ -506,7 +506,6 @@ class simulation:
                 n_k_m_nu = 0
                 n_dd = 0
                 
-    #            pos_pull = 0.
                 rand011 = random.random_sample(self.n_steps[run])
                 rand012 = random.random_sample(self.n_steps[run])
                 rand013 = random.random_sample(self.n_steps[run])
@@ -529,21 +528,16 @@ class simulation:
             #~~~~~~~~~~~~~~END SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~
             
             print('Run {}'.format(run))
-#                print('Pos = {}'.format(pos))
-            #loop over all iteration steps
+            
+            #loop over all iteration steps (install tqdm for progress bar)
         
-#                for i in tqdm.tqdm(range(self.n_steps[run])):
+#            for i in tqdm.tqdm(range(self.n_steps[run])):
             for i in range(self.n_steps[run]):
-                #show, how many iterations have already elapsed
-                #~ if float(i) / self.n_heads[run] in [.1, .2, .5, 1.]:
-                    #~ print str(float(i) / self.n_heads[run] *100) + '% of steps elapsed (run {})'.format(run)
-    
+
                 #calculate force, f contains all forces of each head, sum_F is total load on filament
                 f = h.forceV(s, p, self.d[run])
                 sum_F = sum(f)
                 sum_P = sum(h.unitize(p))
-                
-    #            f_pull = self.k_pull[run] * (pos_pull - pos)
     
                 #store Variables s, p
                 if self.store.get('s'): self.S[run][i] = s
@@ -553,9 +547,9 @@ class simulation:
                 if self.store.get('sum_f'): self.sum_F[run][i] = sum_F
                 if self.store.get('sum_p'): self.sum_P[run][i] = sum_P
     
-    
                 #update s and p according to mode
                 #self.s and self.p remain unchanged!
+                ##begin case vControl
                 if self.mode[run] == 'vControl':
                     s, p = self.updateV_vC(self, s, p, self.d[run], rand01[i], run, i, self.bta[run], self.k[run])
                     if self.option[run] == 'poly':
@@ -565,8 +559,10 @@ class simulation:
                     elif self.option[run] == 'const':
                         displ = self.v[run]
                     pos += displ *  self.d_t[run]
+                ##end case vControl
+                
+                ##begin case fControl
                 elif self.mode[run] == 'fControl':
-                    
                     #immediate detachment if heads too far away from binding site
                     for hi in range(self.n_heads[run]):
                         if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
@@ -575,18 +571,13 @@ class simulation:
                     
                     #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
                     n_att = sum(h.unitizeV(p))
-                    #calculate force <-> displacement of filament
                     if n_att == 0:
-                        print(i)
-                        print("connection broke!")
+                        print("connection broke! This happened at iterationstep {}".format(i))
                         self.t[run][i:] = t
-                        self.breakindex = i
+                        self.breakindex[run] = i
                         break
                     
                     #here, probabilities for attaching, detaching and the corresponding wating time tau are calculated
-    #                s_mat_w = h.s_matrix(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]) 
-    #                k_plus_mat = h.k_plusV(s_mat_w, p.reshape(self.n_heads[run],1), self.d[run], self.bta[run], self.k[run], self.k_on[run])
-    #                k_plus_sum = k_plus_mat.sum(axis=1)
                     k_plus_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
                     k_min = h.k_minV(s, p, self.bta[run], self.k[run])
                     k = k_plus_sum + k_min
@@ -604,26 +595,16 @@ class simulation:
                     #update this head, calculate the force difference
                     s_i, p_i = s[min_index], p[min_index]
                     
-                        #in case of binding, s gets wrapped and positioned acc to p
+                    #in case of binding, s gets wrapped and positioned acc to p
                     s_upd, p_upd = self.update_fC(s_i, p_i, self.d[run], k_plus_row, sum(k_plus_row), run)
                     s[min_index] = s_upd
                     p[min_index] = p_upd
                     
+                    #calculate force vector of updated state and the delta
                     f = h.forceV(s, p, self.d[run])
-    
                     f_delta = sum(f) - self.loadF[run]
-    
-    
-                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
-                    n_att = sum(h.unitizeV(p))
-                    #calculate force <-> displacement of filament
-                    if n_att == 0:
-                        print(i)
-                        print("connection broke!")
-                        self.t[run][i:] = t
-                        self.breakindex = i
-                        break
-    
+                    
+                    #calculate corresponding displacement
                     displ = -f_delta / float(n_att)
     
                     #updating filament position and s positions
@@ -634,26 +615,42 @@ class simulation:
                     #~ print tau_min
                     t += tau
                     self.t[run][i] = t
+                    
+                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
+                    n_att = sum(h.unitizeV(p))
+                    
+                    #check again, if connection broke
+                    if n_att == 0:
+                        print("connection broke! This happened at iterationstep {}".format(i))
+                        self.t[run][i:] = t
+                        self.breakindex[run] = i
+                        break
+                ##end case fControl
                 
-                #main procedure for springControl
+                ##begin case springControl
                 elif self.mode[run] == 'springControl':
                     #immediate detachment if heads too far away from binding site
                     for hi in range(self.n_heads[run]):
                         if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
                              p[hi] = 0
                              n_dd += 1
-    
+                    
+                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
+                    n_att = sum(h.unitizeV(p))
+                    if n_att == 0:
+                        print("connection broke! This happened at iterationstep {}".format(i))
+                        self.t[run][i:] = t
+                        self.breakindex[run] = i
+                        break
+                    
                     #upper prospensity bound
                     k_upper = np.zeros(self.n_heads[run])
-    #                kV = []
                     for hi in range(self.n_heads[run]):
                         #case: unbound
                         if h.unitize(p[hi]) == 0:
-    #                        kV.append(h.k_plus_sum(s[hi], p[hi], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run]))
                             k_upper[hi] = k_plus_max
                         #case: bound
                         if h.unitize(p[hi]) == 1:
-    #                        kV.append(h.k_min(s[hi], p[hi], self.bta, self.k[run]))
                             k_upper[hi] = k_min_max
                     k_upper_sum = sum(k_upper)
                     
@@ -661,7 +658,6 @@ class simulation:
                     tau = - np.log(rand011[i]) / k_upper_sum
                     t += tau
                     self.t[run][i] = t
-                    
                     
                     ##displacements during waiting time
                     pos_pull_upd = pos_pull + self.v_pull[run] * tau
@@ -680,19 +676,27 @@ class simulation:
                     n_att = sum(h.unitizeV(p))
                     
                     s_i, p_i = s[index], p[index]
+                    
+                    #verify the head selection: if RN < prob, head is accepted, prob is integrated rate k(t) dt
+                    ##begin case: distinguish between
+                        # bound -> unbound case (simple)
+                        # unbound -> bound case (complicated, because sum over complicated integrals)
+                    #incrementing variables e.g. n_k_p_u for debugging
                     #case: unbound
                     if h.unitize(p[index]) == 0:
                         ##calculate probability ratio in order to verify head selection
                         v = delta_pos / tau
-                        #attention! could be too many subtractions
+                        #attention! could be too many subtractions (optimization could be good...)
                         prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
                         if rand013[i] < prob / (k_plus_max * tau):
                             n_k_p_u +=1
-    
+                            #rows are line vector containing head pos relative to neighbours taken into account and derived values
                             s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
                             k_plus_row = h.k_plus_matrix(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+                            #update step
                             s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
                         else: n_k_p_nu +=1
+                    
                     #case: bound
                     else:
                         ##calculate probability ratio in order to verify head selection
@@ -703,9 +707,11 @@ class simulation:
                     
                         if rand013[i] < abs(prob) / (k_min_max * tau):
                             n_k_m_u +=1
+                            #update step
                             s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
                         else: n_k_m_nu +=1
-                        
+                    ##end case
+                    
                     s_upd, p_upd = s[index], p[index]
                     n_att_upd = sum(h.unitizeV(p))
                     
@@ -717,18 +723,29 @@ class simulation:
                     #apply translation (jump)
                     s = h.translateV(s, jump)
                     pos = pos_upd
+                    
+                    #check again, if connection broke
+                    n_att = sum(h.unitizeV(p))
+                    if n_att == 0:
+                        print("connection broke! This happened at iterationstep {}".format(i))
+                        self.t[run][i:] = t
+                        self.breakindex[run] = i
+                        break
+                ##end case springControl
                 
-            if self.mode[run] == 'springControl':        
+            #option for debugging / understand what was going on during simulation
+            if self.mode[run] == 'springControl' and False:        
                 print('n_k_p_u:', n_k_p_u)
                 print('n_k_p_nu:', n_k_p_nu)
                 print('n_k_m_u:', n_k_m_u)
                 print('n_k_m_nu:', n_k_m_nu)          
-            if self.mode[run] in ['springControl', 'fControl'] :print('n_dd:', n_dd)          
+            if self.mode[run] in ['springControl', 'fControl']:print('n_dd:', n_dd)          
+            
             #preparing the time vector to be added in first column of each file
             t_w = self.t[run][np.newaxis]
             t_w = t_w.T
             
-            if self.option[run] == 'const':
+            if self.option[run] in ['const', 'poly'] and self.mode[run] == 'vControl':
                 self.average_norm_force_single(run)
             if self.mode[run] == 'fControl':
                 self.average_velocity_single(run)
@@ -743,15 +760,12 @@ class simulation:
                     np.savetxt('time_{}_{}.dat'.format(run, self.n_sim[run]), t_w, header='time')
                     
                 if self.store.get('s'):
-                    print('Store S')
                     S_out = np.concatenate((t_w, self.S[run]), axis=1)
                     np.savetxt('S_{}_{}.dat'.format(run, self.n_sim[run]), S_out, header='time, Position of each head')
                 if self.store.get('pos'):
-                    print('Store Pos')
                     Pos_out = np.concatenate((t_w, self.Pos[run]), axis=1)
                     np.savetxt('Pos_{}_{}.dat'.format(run, self.n_sim[run]), Pos_out, header='time, Position of filament')
                 if self.store.get('p'):
-                    print('Store P')
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
                         np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.P[run], header='time, force applied by each head')
                     elif self.mode[run] == 'fControl':
@@ -760,7 +774,6 @@ class simulation:
                         P_out = np.concatenate((t_w, self.P[run]), axis=1)
                         np.savetxt('P_{}_{}.dat'.format(run, self.n_sim[run]), P_out, header='time, binding state of each head')
                 if self.store.get('f'):
-                    print('Store F')
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
                         np.savetxt('f_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.F[run], header='time, force applied by each head')
                     elif self.mode[run] == 'fControl':
@@ -768,7 +781,6 @@ class simulation:
                     else:
                         F_out = np.concatenate((t_w, self.F[run]), axis=1)
                         np.savetxt('sum_F_{}_Run_{}.dat'.format(run, self.n_sim[run]), F_out, header='time, force applied by each head')
-
                 if self.store.get('sum_f'):
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
                         np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_F[run], header='time, force applied by each head')
@@ -777,7 +789,6 @@ class simulation:
                     else:
                         sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
                         np.savetxt('sum_F_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='time, force applied by each head')
-                
                 if self.store.get('sum_p'):
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
                         np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_P[run], header='heads attached')
@@ -786,8 +797,7 @@ class simulation:
                     else:
                         sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
                         np.savetxt('sum_P_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='heads attached')
-        
-#        return s, p
+
         return 1
 
     def create_threads(self, runs):
@@ -816,21 +826,17 @@ class simulation:
             
         return f_mean / self.n_heads[run], self.v[run]
     
-    #fit function for velovity fit
-#    def lin_fit(self, x, a, t):
-#        return a * x + t
-    
+   
     #get the asymptotic velocity value for one run
     def average_velocity_single(self, run, equilib_wait_frac=0.25):
         #case no break
         if self.breakindex[run] == -1: n = self.n_steps[run]
-        #case break: only take data up to breakindex into account
-        else: n = self.breakindex[run]
+        #case break: only take data up to breakindex -2 into account
+        else: n = self.breakindex[run] - 2
         
         t = np.array(self.t[run][int(n * equilib_wait_frac):n])
         pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
-        if not len(t) == len(pos): print('fffffffffffffffeeeeeeeeeeeeeeeeeehhhhhhhhhhhhhlllllllllllleeeeeeeeeeeerrrr')
-        print (len(t),pos)
+        
         popt, pcov = curve_fit(h.lin_fit, t, pos)
         v = popt[0]
         
@@ -873,37 +879,3 @@ class simulation:
         for e in runs:
             self.f_Sum_axis_added[index] += self.f_Sum_axis[e]
             self.v_axis_added[index] += self.v_axis[e]
-        #~ print(self.f_Sum_axis_added)
-        #~ print(self.v_axis_added)
-
-
-#if __name__ == '__main__':
-#    # Establish communication queues
-#    tasks = multiprocessing.JoinableQueue()
-#    results = multiprocessing.Queue()
-#
-#    # Start consumers
-#    num_consumers = multiprocessing.cpu_count() - 1
-#    print('Creating {} consumers'.format(num_consumers))
-#    consumers = [Consumer(tasks, results) for i in range(num_consumers)]
-#    for w in consumers:
-#        w.start()
-#
-#    # Enqueue jobs
-#    num_jobs = len(v_Coeff)
-#    n = np.array([i+1 for i in range(num_jobs)])
-#    for r in n:
-#        tasks.put(sim.run(r))
-#
-#    # Add a poison pill for each consumer
-#    for i in range(num_consumers):
-#        tasks.put(None)
-#
-#    # Wait for all of the tasks to finish
-#    tasks.join()
-#
-#    # Start printing results
-#    while num_jobs:
-#        result = results.get()
-#        print('Result:', result)
-#        num_jobs -= 1

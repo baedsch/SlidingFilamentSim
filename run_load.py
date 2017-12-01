@@ -12,7 +12,7 @@ option = 'poly' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'loadcheck__10__direct_detachment'													
+name = 'loadrange__0_90__direct_detachment'													
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -32,11 +32,11 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.
-repetitions = 150
+repetitions = 10
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
-loadF = [10 for i in range(1)]
+loadF = [10*i for i in range(8)] + [2*i + 72 for i in range(20)]
 															
 																								
 #parameters for vControl																		    
