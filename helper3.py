@@ -363,10 +363,10 @@ def det_p(values, probabilities, norm):
         raise AssertionError('arg1 and arg2 must have the same length')
 
     #returns e.g. [0., 0.3, 1.0], therefore takes element and adds the following one
-    acc = np.add.accumulate(probabilities)
+    acc = np.concatenate((np.array([0]), np.add.accumulate(probabilities)))
     bins = np.append(0., acc)
     r = random.random()
-    for i in range(len(values)):
+    for i in range(len(values)): ##################################### len(values) -1 ?????????????????????????????????
         if bins[i] <= r < bins[i+1]: return values[i]
     raise AssertionError('something in the det_p method went WRONG!!!')
 
