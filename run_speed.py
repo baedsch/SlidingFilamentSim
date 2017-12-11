@@ -36,7 +36,7 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.
-repetitions = 10																		
+repetitions = 1																	
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
@@ -56,9 +56,9 @@ colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 #step_max_val = [0.05, 0.2]
 
     #-> const option																			
-step_n_jumps = 25															    
+step_n_jumps = 1															    
 step_min_val = 0
-step_max_val = 1000
+step_max_val = 1
 
   
 #step_factors = [1, 3]																		    
