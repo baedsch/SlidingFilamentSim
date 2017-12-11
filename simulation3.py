@@ -304,9 +304,9 @@ class simulation:
     
             #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
             #random numbers for udating (for 'fControl', we need two sets, for springControl three)
-            if self.mode[run] in ['vControl']:
-                print('rand creates')
-                rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
+#            if self.mode[run] in ['vControl']:
+#                print('rand creates')
+#                rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
             
             if self.mode[run] in ['fControl']:
                 rand011 = random.random_sample(self.n_steps[run])
@@ -358,7 +358,7 @@ class simulation:
         
 #            for i in tqdm.tqdm(range(self.n_steps[run])):
             for i in range(self.n_steps[run]):
-
+                    
                 #calculate force, f contains all forces of each head, sum_F is total load on filament
                 f = h.forceV(s, p, self.d[run])
                 sum_F = sum(f)
@@ -376,7 +376,10 @@ class simulation:
                 #self.s and self.p remain unchanged!
                 ##begin case vControl
                 if self.mode[run] == 'vControl':
-                    s, p = self.updateV_vC(self, s, p, self.d[run], rand01[i], run, i, self.bta[run], self.k[run])
+                    #random number generation moved here for memory optimization
+                    rand01 = random.random_sample(self.n_heads[run])
+                    
+                    s, p = self.updateV_vC(self, s, p, self.d[run], rand01, run, i, self.bta[run], self.k[run])
                     if self.option[run] == 'poly':
                         displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
                     elif self.option[run] == 'step':
@@ -489,7 +492,12 @@ class simulation:
                     n_att = sum(h.unitizeV(p))
                     
                     #attention! could be too many subtractions
-                    delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
+                    
+                    #case not stiff
+                    if self.option[run] != 'stiff': delta_pos = (self.k_pull[run] * pos_pull_upd - sum_F + n_att * pos) / (self.k_pull[run] + n_att) - pos
+                    #case stiff
+                    else: delta_pos = pos_pull_upd - pos_pull
+                    
                     #apply translation
                     s = h.translateV(s, delta_pos)
                     pos += delta_pos
@@ -540,14 +548,16 @@ class simulation:
                     s_upd, p_upd = s[index], p[index]
                     n_att_upd = sum(h.unitizeV(p))
                     
-                    #jump of filament due to attachment / detatchment
+                    #jump of filament due to attachment / detatchment ONLY if option != 'stiff'
                     f = h.forceV(s, p, self.d[run])
                     sum_F = sum(f)
-                    pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
-                    jump = pos_upd - pos
-                    #apply translation (jump)
-                    s = h.translateV(s, jump)
-                    pos = pos_upd
+                    
+                    if self.option != 'stiff':
+                        pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
+                        jump = pos_upd - pos
+                        #apply translation (jump)
+                        s = h.translateV(s, jump)
+                        pos = pos_upd
                     
                     #check again, if connection broke
                     n_att = sum(h.unitizeV(p))

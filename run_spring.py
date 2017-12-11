@@ -8,7 +8,7 @@ from simulation3 import simulation#, Consumer#, varstep_sim
 #################################################################################################|
 
 mode = 'springControl' #choose from ['vControl', 'fControl', ]
-option = '' #for fControl choose from xy			
+option = 'stiff' #for fControl choose from xy			
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
@@ -88,12 +88,51 @@ sim = simulation(mode,
     k_pull = k_pull,
     v_pull = v_pull)
 
+
+
 for v in velocities:
 	sim.add_run(v_pull=v)
 n = [i+1 for i in range(len(velocities))]
 for rn in n:
 	sim.start_run(rn)
 #	sim.sum_up_P(rn)
+sim.plot_pos(n)
+sim.plot_p(n)
+sim.plot_f(n)
+###########################################
+
+########### MULTIPLE RUN, GIVEN SPRING VELOCITY SNIPPET, STEPS
+
+sim = simulation(mode,
+    n_steps,
+    n_heads,
+    name = name,
+    option = option,
+    s_store = s_store,
+    f_store = f_store,
+    f_sum_store = sum_f_store,
+    pos_store = pos_store,
+    writeText = writeText,
+    bta = bta,
+    k = k,
+    k_on = k_on,
+    th = th,
+    d_t = d_t,
+    d = d,
+    k_pull = k_pull,
+    v_pull = v_pull)
+
+
+
+velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+    
+    
+    for r in range(repetitions):
+        for v in velocities:
+            sim.add_run(v=v, n_sim=r)
+    n = [i+1 for i in range(len(velocities))]
+    for ni in n:
+        sim.start_run(ni)
 sim.plot_pos(n)
 sim.plot_p(n)
 sim.plot_f(n)

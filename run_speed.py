@@ -15,7 +15,7 @@ option = 'const' #for fControl choose from xy
 				#for vControl choose from 													
 				#						-> poly: specify coefficients						
 				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spring_crosscheck_v=5'													
+name = 'speedcheck_0_1000'
 																								
 #store data in ram / write them to text files?													
 s_store = False																					
@@ -28,7 +28,7 @@ writeText = False
 																								
 #most important parameters																		
 n_heads = int(1e2)																			
-n_steps = int(1e3)																				
+n_steps = int(1e4)																				
 d_t = 5e-3																						
 bta = 2.																						
 k = 10.
@@ -36,7 +36,7 @@ k_on = 10.
 th = 0.01																						
 t0 = 0.																						
 d = 2.
-repetitions = 1																	
+repetitions = 10																
 random.seed(121155)																				
 																								
 #parameters for fControl																		    
@@ -56,9 +56,9 @@ colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 #step_max_val = [0.05, 0.2]
 
     #-> const option																			
-step_n_jumps = 1															    
+step_n_jumps = 20															    
 step_min_val = 0
-step_max_val = 1
+step_max_val = 1000
 
   
 #step_factors = [1, 3]																		    
@@ -67,7 +67,7 @@ if option == 'poly':
         raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
                                     																
 #configure mulitprocessing																		
-n_cores = 1 																			
+n_cores = 3																		
 																								
 																								
 #################################################################################################|
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     					d_t = d_t,
     					d = d,
                     v = 0,
-                    repetitions = 1,
+                    repetitions = repetitions,
                     step_n_jumps = step_n_jumps,
                     step_min_val = step_min_val,
                     step_max_val = step_max_val)
@@ -137,11 +137,13 @@ if __name__ == '__main__':
         for v in velocities:
             sim.add_run(v=v, n_sim=r)
     n = [i+1 for i in range(len(velocities))]
-    pool = Pool(processes=n_cores)
-    pool.map(sim.start_run, n)
+    for ni in n:
+        sim.start_run(ni)
+#    pool = Pool(processes=n_cores)
+#    pool.map(sim.start_run, n)
 #    for nr in n: sim.start_run(nr)
-#    for i in n:
-#        res = sim.average_norm_force_single(i)
+    for i in n:
+        res = sim.average_norm_force_single(i)
     sim.plot_f_norm__v()
 #    Processes = []
 #    
