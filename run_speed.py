@@ -46,8 +46,7 @@ loadF = [10. for i in range(3)]
 	#-> poly option																				
 v_Coeff = [[30, 0.] for i in range(3)] #example for constant velocity of 1.										
 																								
-	#-> step option																				
-#step_n_jumps = int(n_steps / 1000)															    
+	#-> step option																																		    
 colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 #step_n_jumps = [25.,25]																		    
 #step_min_val = [0., 0.05]

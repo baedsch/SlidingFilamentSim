@@ -335,6 +335,7 @@ def s_row(s, n_neighbours, d):
 
     return s_mat
 
+#returns sth like [-n_neigh ... -1, 1 ... n_neigh+1], so the list of p taken into account
 def p_row(n_neighbours):
 
     #2n + 1 for dim of matrix
@@ -360,7 +361,7 @@ def p_row(n_neighbours):
 def det_p(values, probabilities, norm):
     probabilities = [p / norm for p in probabilities]
     if not len(values) == len(probabilities):
-        raise AssertionError('arg1 and arg2 must have the same length')
+        raise ValueError('arg1 and arg2 must have the same length')
 
     #returns e.g. [0., 0.3, 1.0], therefore takes element and adds the following one
     acc = np.add.accumulate(probabilities)
@@ -379,9 +380,9 @@ k_plus_matrixV = np.vectorize(k_plus_matrix)
 #there is a function which does this np.random.choise(values, p=probabilities)
 def random_discrete(length, values=[0., 1.], probabilities=[0.3, 0.7]):
     if not np.sum(probabilities) == 1.:
-        raise AssertionError('Probs should add to 1; input dicts should have the form length, values=[0., 1.], probabilities=[0.3, 0.7]')
+        raise ValueError('Probs should add to 1; input dicts should have the form length, values=[0., 1.], probabilities=[0.3, 0.7]')
     if not len(values) == len(probabilities):
-        raise AssertionError('arg1 and arg2 must have the same length')
+        raise ValueError('arg1 and arg2 must have the same length')
     res = np.array([])
 
     #returns e.g. [0., 0.3, 1.0], therefore takes element and adds the following one

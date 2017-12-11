@@ -90,7 +90,7 @@ sim = simulation(mode,
 
 for v in velocities:
 	sim.add_run(v_pull=v)
-n = np.array([i+1 for i in range(len(velocities))])
+n = [i+1 for i in range(len(velocities))]
 for rn in n:
 	sim.start_run(rn)
 #	sim.sum_up_P(rn)

@@ -1,11 +1,8 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.special as special
 from scipy.optimize import curve_fit
 from numpy import random
-#~ import random
-import math
 import os
 import platform
 import time as tme
@@ -17,8 +14,6 @@ import multiprocessing as mp
 import bisect
 import itertools
 import collections
-# in order to be able to use map with KeyWordArgs
-from functools import partial
 import helper3 as h
 
 
@@ -66,8 +61,8 @@ class simulation:
         self.step_min_val = [kwargs.get('step_min_val', 0.)]
         self.step_max_val = [kwargs.get('step_max_val', 100.)]
 
-        self.values_p = [kwargs.get('values_p', [0., 1.])]
-        self.probabilities_p = [kwargs.get('probabilities_p', [0.3, 0.7])]
+        self.values_p = [kwargs.get('values_p', [1, 0])]
+        self.probabilities_p = [kwargs.get('probabilities_p', [0.7, 0.3])]
         self.s = [kwargs.get('s', h.random_cont(self.n_heads[self.run], -self.d[self.run]/2, self.d[self.run]/2))]
         self.p = [kwargs.get('p', h.random_discrete(self.n_heads[self.run], probabilities=self.probabilities_p[self.run]))]
         self.t0 = [kwargs.get('t0', 0.)]
@@ -172,13 +167,13 @@ class simulation:
 
         self.values_p.append(kwargs.get('values_p', self.values_p[self.run]))
         self.probabilities_p.append(kwargs.get('probabilities_p', self.probabilities_p[run]))
-        self.s.append(kwargs.get('s', h.random_cont(self.n_heads[run], -self.d[self.run]/2, self.d[self.run]/2)))
-        self.p.append(kwargs.get('p', h.random_discrete(self.n_heads[run], probabilities=self.probabilities_p[self.run+1])))
         self.t0.append(kwargs.get('t0', self.t0[self.run]))
-
+        
         self.run += 1
-        #OBSOLETE if self.v_Coeff[self.run] != 0 and self.mode[self.run] == 'fControl': raise ValueError('Wrong mode or velocity parameters chosen')
         run = self.run
+        self.s.append(kwargs.get('s', h.random_cont(self.n_heads[self.run], -self.d[self.run]/2, self.d[self.run]/2)))
+        self.p.append(kwargs.get('p', h.random_discrete(self.n_heads[self.run], values=self.values_p[self.run], probabilities=self.probabilities_p[self.run])))
+        
 
         if self.mode[self.run] in ['vControl']: self.t.append(np.array([i*self.d_t[self.run] + self.t0[self.run] for i in range(self.n_steps[self.run])]))
         elif self.mode[self.run] in ['fControl', 'springControl']: self.t.append(np.zeros(self.n_steps[run]))
@@ -293,177 +288,7 @@ class simulation:
         return s, p
     
     #MAIN UPDATE METHODS#END############################################
-
-    #takes the P array and returns the sum of bound heads for each timestep (after simulation)
-    def sum_up_P(self, run):
-        for p in self.P[run]:
-            s = sum(h.unitize(p))
-            self.sum_P[run] = np.append(self.sum_P[run], s)
-        return self.sum_P[run]
-
-
-    def plot_p(self, run, leg=False):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Time evolution of bound heads ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('time [s]')
-        ax.set_ylabel('bound heads')
-
-        for r in run:
-            if len(self.args_passed[r]) == 1:
-                lab = list(self.args_passed[r])[0]
-                val = self.args_passed[r][lab]
-#                print('t', max(self.t[r]))
-#                print('p', self.sum_P[r])
-                ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
-            else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
-        if leg: ax.legend()
-        plt.savefig('Sum_p.png', dpi=200)
-
-    def plot_f(self, run, leg=False):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('time [s]')
-        ax.set_ylabel('Total load')
-
-        for r in run:
-            if len(self.args_passed[r]) == 1:
-                lab = list(self.args_passed[r])[0]
-                val = self.args_passed[r][lab]
-                ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
-            else: ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-")
-        if leg: ax.legend()
-        plt.savefig('Sum_f.png', dpi=200)
-
-    def plot_f_norm(self, run, leg=False):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('time [s]')
-        ax.set_ylabel('Total load normalized')
-
-        for r in run:
-            if len(self.args_passed[r]) == 1:
-                lab = list(self.args_passed[r])[0]
-                val = self.args_passed[r][lab]
-                ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
-            else: ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-")
-        if leg: ax.legend()
-        plt.savefig('Sum_f.png', dpi=200)
     
-    #
-    def plot_f_norm__v(self,leg=False, c='b'):
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
-        ax.set_xlabel('velocity [m/s]')
-        ax.set_ylabel('Total load normalized')
-        
-
-        color=c
-        ax.scatter(self.v_axis_runs, self.f_Sum_axis_runs, color=color, s=5)
-        
-        plt.savefig('f_norm__v.png', dpi=200)
-        print(self.f_Sum_axis_runs)
-    
-    #TBA normalization of force!!
-    def plot_v__f_norm(self, leg=False, c='b'):
-        
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
-        ax.set_xlabel('Total load')
-        ax.set_ylabel('velocity [m/s]')
-        #ax.set_yscale('log')
-        color = c
-        
-        ax.scatter(self.f_Sum_axis_runs, self.v_axis_runs, color=color, s=5)
-        
-        plt.savefig('v__f_norm.png', dpi=200)
-    
-    def plot_pos(self, run, leg=False):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Position filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('time [s]')
-        ax.set_ylabel('position')
-
-        for r in run:
-            if len(self.args_passed[r]) == 1:
-                lab = list(self.args_passed[r])[0]
-                val = self.args_passed[r][lab]
-                ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
-            else: ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-")
-        if leg: ax.legend()
-        plt.savefig('Pos.png', dpi=200)
-
-    def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Load per head on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('velocity')
-        ax.set_ylabel('Total load')
-        val = 0
-
-        for r in run:
-            if not isinstance(c, str): color = c[r]
-            else: color = c
-            lab = legvar
-            if leg: val = legval[run.index(r)]
-            ax.scatter(self.v_axis_added[r], self.f_Sum_axis_added[r], color=color, s=5, label='{}={}'.format(lab, val))
-        if leg: ax.legend()
-        plt.savefig('Sum_f_v.png', dpi=200)
-
-    def plot_v_step(self, run, leg=False, c='b'):
-        if isinstance(run, int):
-            run = [run]
-            print('input into list')
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-
-        ax.set_title('Velocity of filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('jump [arb. time]')
-        ax.set_ylabel('velocity')
-
-        for r in run:
-            if len(self.args_passed[r]) == 1:
-                lab = list(self.args_passed[r])[0]
-                val = self.args_passed[r][lab]
-                ax.plot(self.v_axis[r], color=c, label='{}={}'.format(lab, val))
-            else: ax.plot(self.v_axis[r], color=c)
-        if leg: ax.legend()
-        plt.savefig('v.png', dpi=200)
-
     #run actual simulation
     def start_run(self, runs):
         #this loop enables running several runs with one function call -> Multiprocessing
@@ -797,8 +622,196 @@ class simulation:
                     else:
                         sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
                         np.savetxt('sum_P_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='heads attached')
+                
+                #write simulation parameters
+                if self.mode[run] == 'vControl' and self.option[run] == 'const':
+                    with open('ParameterValues_{}_Run{}'.format(self.v[run], self.v[run])) as f:
+                        f.write('Nrealisation kon timeconstant k0 energyconstant d0 Δt0 neighbourcriterion n initialpvector (pdetached, pattached) vprescribed\n')
+                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}	{}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run], self.v[run]))
+                elif self.mode[run] == 'fControl':
+                    with open('ParameterValues_{}_Run{}'.format(self.loadF[run], self.n_sim[run]), 'w') as f:
+                        f.write('Nrealisation kon timeconstant k0 energyconstant d0 Δt0 neighbourcriterion n initialpvector (pdetached, pattached) fprescribed\n')
+                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}	{}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run], self.loadF[run]))
+                else:
+                    with open('ParameterValues_Run{}'.format(run)) as f:
+                   
+                        f.write('Nrealisation kon timeconstant k0 energyconstant d0 Δt0 neighbourcriterion n initialpvector (pdetached, pattached)\n')
+                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run]))
+                
 
         return 1
+
+    #takes the P array and returns the sum of bound heads for each timestep (after simulation)
+    def sum_up_P(self, run):
+        for p in self.P[run]:
+            s = sum(h.unitize(p))
+            self.sum_P[run] = np.append(self.sum_P[run], s)
+        return self.sum_P[run]
+
+
+    def plot_p(self, run, leg=False):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Time evolution of bound heads ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('bound heads')
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+#                print('t', max(self.t[r]))
+#                print('p', self.sum_P[r])
+                ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
+            else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
+        if leg: ax.legend()
+        plt.savefig('Sum_p.png', dpi=200)
+
+    def plot_f(self, run, leg=False):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('Total load')
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+                ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
+            else: ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-")
+        if leg: ax.legend()
+        plt.savefig('Sum_f.png', dpi=200)
+
+    def plot_f_norm(self, run, leg=False):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('Total load normalized')
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+                ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
+            else: ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-")
+        if leg: ax.legend()
+        plt.savefig('Sum_f.png', dpi=200)
+    
+    #
+    def plot_f_norm__v(self,leg=False, c='b'):
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
+        ax.set_xlabel('velocity [m/s]')
+        ax.set_ylabel('Total load normalized')
+        
+
+        color=c
+        ax.scatter(self.v_axis_runs, self.f_Sum_axis_runs, color=color, s=5)
+        
+        plt.savefig('f_norm__v.png', dpi=200)
+        print(self.f_Sum_axis_runs)
+    
+    #TBA normalization of force!!
+    def plot_v__f_norm(self, leg=False, c='b'):
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
+        ax.set_xlabel('Total load')
+        ax.set_ylabel('velocity [m/s]')
+        #ax.set_yscale('log')
+        color = c
+        
+        ax.scatter(self.f_Sum_axis_runs, self.v_axis_runs, color=color, s=5)
+        
+        plt.savefig('v__f_norm.png', dpi=200)
+    
+    def plot_pos(self, run, leg=False):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Position filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('position')
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+                ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
+            else: ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-")
+        if leg: ax.legend()
+        plt.savefig('Pos.png', dpi=200)
+
+    def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Load per head on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('velocity')
+        ax.set_ylabel('Total load')
+        val = 0
+
+        for r in run:
+            if not isinstance(c, str): color = c[r]
+            else: color = c
+            lab = legvar
+            if leg: val = legval[run.index(r)]
+            ax.scatter(self.v_axis_added[r], self.f_Sum_axis_added[r], color=color, s=5, label='{}={}'.format(lab, val))
+        if leg: ax.legend()
+        plt.savefig('Sum_f_v.png', dpi=200)
+
+    def plot_v_step(self, run, leg=False, c='b'):
+        if isinstance(run, int):
+            run = [run]
+            print('input into list')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Velocity of filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_xlabel('jump [arb. time]')
+        ax.set_ylabel('velocity')
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+                ax.plot(self.v_axis[r], color=c, label='{}={}'.format(lab, val))
+            else: ax.plot(self.v_axis[r], color=c)
+        if leg: ax.legend()
+        plt.savefig('v.png', dpi=200)
+
+    
 
     def create_threads(self, runs):
         self.jobs = [th.Thread(target=self.start_run, args=(i,)) for i in runs]
@@ -832,7 +845,7 @@ class simulation:
         #case no break
         if self.breakindex[run] == -1: n = self.n_steps[run]
         #case break: only take data up to breakindex -2 into account
-        else: n = self.breakindex[run] - 2
+        else: n = self.breakindex[run] - 2#check?????????????????????????????????????????????????
         
         t = np.array(self.t[run][int(n * equilib_wait_frac):n])
         pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
