@@ -626,17 +626,17 @@ class simulation:
                 #write simulation parameters
                 if self.mode[run] == 'vControl' and self.option[run] == 'const':
                     with open('ParameterValues_{}_Run{}.dat'.format(self.v[run], self.v[run]), 'w') as f:
-                        f.write('Nrealisation kon timeconstant k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached) vprescribed\n')
-                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}	{}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run], self.v[run]))
+                        f.write('Nrealisation kon k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached) vprescribed\n')
+                        f.write('{} {} {} {}	{}	{} {} {}	{} {}\n'.format(self.n_steps[run], self.k_on[run], self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], self.n_heads[run], self.probabilities_p[run], self.v[run]))
                 elif self.mode[run] == 'fControl':
                     with open('ParameterValues_{}_Run{}.dat'.format(self.loadF[run], self.n_sim[run]), 'w') as f:
                         f.write('Nrealisation kon timeconstant k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached) fprescribed\n')
-                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}	{}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run], self.loadF[run]))
+                        f.write('{} {} {} {} {}	{}	{} {} {}	{}\n'.format(self.n_steps[run], self.k_on[run], self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], self.n_heads[run], self.probabilities_p[run], self.loadF[run]))
                 else:
                     with open('ParameterValues_Run{}.dat'.format(run), 'w') as f:
                    
                         f.write('Nrealisation kon timeconstant k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached)\n')
-                        f.write('{} {} {} {} {}	{}	{} {} {}	{} {}\n'.format(self.n_steps[run], self.k_on[run], 'timeconstant', self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], 'n', 'initPVec', self.probabilities_p[run]))
+                        f.write('{} {} {} {} {}	{}	{} {} {}\n'.format(self.n_steps[run], self.k_on[run], self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], self.n_heads[run], self.probabilities_p[run]))
                 
 
         return 1
