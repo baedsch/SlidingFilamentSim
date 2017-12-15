@@ -1,135 +1,92 @@
 import numpy as np
 from numpy import random
 import time as tme
-from simulation3 import simulation#, Consumer#, varstep_sim
+from multiprocessing import Pool
+from simulation3 import simulation
+mode = 'springControl'
 
+###############################################################################
+# START
 #initialization
+#
+###############################################################################
+option = 'const' #choose from const, poly, step
+name = 'loadrange__0_90__direct_detachment'
+path_to_results_directory = "please fill carefully or comment line out"
 
-#################################################################################################|
+#store data in ram / write them to text files?
+s_store = False
+p_store = True
+f_store = False
+sum_f_store = True
+sum_p_store = False
+pos_store = True
+writeText = True
 
-mode = 'springControl' #choose from ['vControl', 'fControl', ]
-option = 'stiff' #for fControl choose from xy			
-				#for vControl choose from 													
-				#						-> poly: specify coefficients						
-				#						-> step: specify n_elem, n_jumps, min_val, max_val		
-name = 'spring_speed_cross_v_5__k_3__ns_5e4'													
-																								
-#store data in ram / write them to text files?													
-s_store = False																					
-p_store = True																					
-f_store = False																					
-sum_f_store = True																				
-pos_store = True																			     	
-writeText = False																			
-																								
-#most important parameters																		
-n_heads = int(1e2)																			
-n_steps = int(2e4)																				
-d_t = 5e-3																						
-bta = 2.																						
-k = 10.
-k_on = 10.																						
-th = 0.01																						
-t0 = 0.																						
-d = 2.																				
-random.seed(121155)																				
-																								
-#parameters for fControl																		    
-loadF = [10. for i in range(3)]																
-																								
-#parameters for vControl																		    
-	#-> poly option																				
-v_Coeff = [[10., 0.] for i in range(3)] #example for constant velocity of 1.										
-																								
-	#-> step option																				
-#step_n_jumps = int(n_steps / 1000)															    
-colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']												
-#step_n_jumps = [25.,25]																		    
-#step_min_val = [0., 0.05]																		
-#step_max_val = [0.05, 0.2]
-step_n_jumps = [25., 25.]																		    
-step_min_val = [0., 0.05]																		
-step_max_val = [0.05, 0.2]
-																		
-#step_factors = [1, 3]																		    
-if not len(step_min_val) == len(step_max_val) and mode == 'vControl': 		                    
-	raise ValueError("step_min_val, step_max_val and step_factors must have the same length")																							#|
-           
-#parameters for springControl
-k_pull = 3000
-v_pull = 5
+#most important parameters
+n_heads = int(1e2)
+n_iterations_per_simulation = int(1e4)
+delta_t = 5e-3
+beta = 2.
+kappa = 10.
+stiffness_of_drag_spring = 100.
+k_on = 10.
+neighbourhood_criterion = 0.01
+start_time = 0.
+distance_between_binding_sites = 2.
+random.seed(121155)
 
-velocities = [30 for i in range(2)]
-                         																
-#configure mulitprocessing																		
-n_cores = 2																			
-																								
-																								
-#################################################################################################|
+#scan for drag velocity between
+step_min_val = 0
+#and
+step_max_val = 20
+#nubber of steps inbetween
+step_n_jumps = 4
 
-########### MULTIPLE RUN, GIVEN SPRING VELOCITY SNIPPET
+repetitions_with_same_parameters = 10																																						#|
 
-sim = simulation(mode,
-    n_steps,
-    n_heads,
-    name = name,
-    option = option,
-    s_store = s_store,
-    f_store = f_store,
-    f_sum_store = sum_f_store,
-    pos_store = pos_store,
-    writeText = writeText,
-    bta = bta,
-    k = k,
-    k_on = k_on,
-    th = th,
-    d_t = d_t,
-    d = d,
-    k_pull = k_pull,
-    v_pull = v_pull)
+#configure mulitprocessing
+n_cores = 8
+use_multiprocessing = False
+
+#//////////////////////////////////////////////////////////////////////////////
+# END
+#initialization
+#//////////////////////////////////////////////////////////////////////////////
 
 
 
-for v in velocities:
-	sim.add_run(v_pull=v)
-n = [i+1 for i in range(len(velocities))]
-for rn in n:
-	sim.start_run(rn)
-#	sim.sum_up_P(rn)
-sim.plot_pos(n)
-sim.plot_p(n)
-sim.plot_f(n)
-###########################################
+#==============================================================================
+#SNIPPET
+#MULTIPLE RUN, GIVEN DRAG VELOCITY
+#==============================================================================
 
-########### MULTIPLE RUN, GIVEN SPRING VELOCITY SNIPPET, STEPS
-
-sim = simulation(mode,
-    n_steps,
-    n_heads,
-    name = name,
-    option = option,
-    s_store = s_store,
-    f_store = f_store,
-    f_sum_store = sum_f_store,
-    pos_store = pos_store,
-    writeText = writeText,
-    bta = bta,
-    k = k,
-    k_on = k_on,
-    th = th,
-    d_t = d_t,
-    d = d,
-    k_pull = k_pull,
-    v_pull = v_pull)
+sim = simulation(   mode,
+                    n_iterations_per_simulation,
+                    n_heads,
+                    name = name,
+                    path = path_to_results_directory,
+                    option = option,
+                    s_store = s_store,
+                    f_store = f_store,
+                    f_sum_store = sum_f_store,
+                    pos_store = pos_store,
+                    writeText = writeText,
+                    bta = beta,
+                    k = kappa,
+                    k_on = k_on,
+                    th = neighbourhood_criterion,
+                    d_t = delta_t,
+                    d = distance_between_binding_sites,
+                    k_pull = stiffness_of_drag_spring,
+                    v_pull = 0.)
 
 
 
 velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
-    
-    
     for r in range(repetitions):
         for v in velocities:
-            sim.add_run(v=v, n_sim=r)
+            sim.add_run(v_pull=v, n_sim=r)
     n = [i+1 for i in range(len(velocities))]
     for ni in n:
         sim.start_run(ni)
