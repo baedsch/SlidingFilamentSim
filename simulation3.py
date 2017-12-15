@@ -97,6 +97,8 @@ class simulation:
             if platform.system() == 'Windows':
                 if kwargs.get('path') == '':
                     path = 'res/'
+                else:
+                    path = kwargs.get('path')
                 if not path[-1] == '/': path += "/"
                 try:
                     os.makedirs(path + directory)
@@ -107,6 +109,8 @@ class simulation:
             if platform.system() == 'Linux':
                 if kwargs.get('path') == '':
                     path = './res/'
+                else:
+                    path = kwargs.get('path')
                 if not path[-1] == '/': path += "/"
                 try:
                     os.makedirs(path + directory)

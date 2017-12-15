@@ -11,8 +11,8 @@ mode = 'vControl'
 #
 ###############################################################################
 option = 'const' #choose from const, poly, step
-name = 'loadrange__0_90__direct_detachment'
-path_to_results_directory = ''
+name = 'please rename'
+path_to_results_directory = 'please fill carefully or comment leave the string blank'
 
 #store data in ram / write them to text files?
 s_store = False
@@ -24,8 +24,8 @@ pos_store = True
 writeText = True
 
 #most important parameters
-n_heads = int(1e2)
-n_iterations_per_simulation = int(1e4)
+n_heads = int(1e1)
+n_iterations_per_simulation = int(1e2)
 delta_t = 5e-3
 beta = 2.
 kappa = 10.

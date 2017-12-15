@@ -11,7 +11,7 @@ mode = 'fControl'
 #
 ###############################################################################
 option = ''
-name = 'loadrange__0_90__direct_detachment'
+name = 'please rename'
 path_to_results_directory = 'please fill carefully or comment leave the string blank'
 
 #store data in ram / write them to text files?
@@ -24,8 +24,8 @@ pos_store = True
 writeText = True
 
 #most important parameters
-n_heads = int(1e2)
-n_iterations_per_simulation = int(1e4)
+n_heads = int(1e1)
+n_iterations_per_simulation = int(1e2)
 delta_t = 5e-3
 beta = 2.
 kappa = 10.
@@ -38,7 +38,7 @@ random.seed(121155)
 #scan for load between
 step_min_val = 0
 #and
-step_max_val = 20
+step_max_val = 5
 #nubber of steps inbetween
 step_n_jumps = 4
 
@@ -82,8 +82,16 @@ if __name__ == '__main__':
         for f in loads:
             sim.add_run(loadF=f, n_sim=r)
     n = [i+1 for i in range(len(loads) * repetitions_with_same_parameters)]
-    for rn in n:
-    	sim.start_run(rn)
+
+    if not use_multiprocessing:
+        for rn in n:
+            sim.start_run(rn)
+    else:
+        pool = Pool(processes=n_cores)
+        pool.map(sim.start_run, n)
+        for nr in n:
+            sim.start_run(nr)
+
     sim.plot_v__f_norm()
     sim.plot_pos(n)
     sim.plot_p(n)
