@@ -24,8 +24,8 @@ pos_store = True
 writeText = True
 
 #most important parameters
-n_heads = int(1e1)
-n_iterations_per_simulation = int(1e2)
+n_heads = int(1e2)
+n_iterations_per_simulation = int(1e4)
 delta_t = 5e-3
 beta = 2.
 kappa = 10.
