@@ -95,7 +95,8 @@ class simulation:
         directory = tme.strftime("%Y_%m_%d__%H;%M;%S_", tme.gmtime()) + self.name
         try:
             if platform.system() == 'Windows':
-                path = kwargs.get('path', 'res/')
+                if kwargs.get('path') == '':
+                    path = 'res/'
                 if not path[-1] == '/': path += "/"
                 try:
                     os.makedirs(path + directory)
@@ -104,7 +105,8 @@ class simulation:
                     os.makedirs(path + directory)
                 os.chdir(path + directory)
             if platform.system() == 'Linux':
-                path = kwargs.get('path', './res/')
+                if kwargs.get('path') == '':
+                    path = './res/'
                 if not path[-1] == '/': path += "/"
                 try:
                     os.makedirs(path + directory)

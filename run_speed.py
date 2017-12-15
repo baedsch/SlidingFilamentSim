@@ -12,7 +12,7 @@ mode = 'vControl'
 ###############################################################################
 option = 'const' #choose from const, poly, step
 name = 'loadrange__0_90__direct_detachment'
-path_to_results_directory = "please fill carefully or comment line out"
+path_to_results_directory = ''
 
 #store data in ram / write them to text files?
 s_store = False
@@ -35,6 +35,8 @@ start_time = 0.
 distance_between_binding_sites = 2.
 random.seed(121155)
 
+############################################
+#####CASE OPTION CONST######################
 #scan for load between
 step_min_val = 0
 #and
@@ -42,9 +44,13 @@ step_max_val = 20
 #nubber of steps inbetween
 step_n_jumps = 4
 
+#####CASE OPTION POLY#######################
+coeff_of_velocity_polynomial = [[5, 0.], [10, 0.]]
+############################################
+
 repetitions_with_same_parameters = 10																																						#|
 
-#configure mulitprocessing
+#configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
 use_multiprocessing = False
 
@@ -77,20 +83,23 @@ if __name__ == '__main__':
                         k_on = k_on,
                         th = neighbourhood_criterion,
                         d_t = delta_t,
-                        d = distance_between_binding_sites,
-                        v = 0,
-                        repetitions = repetitions_with_same_parameters,
-                        step_n_jumps = step_n_jumps,
-                        step_min_val = step_min_val,
-                        step_max_val = step_max_val)
-
-    velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+                        d = distance_between_binding_sites)
 
 
-    for r in range(n_iterations_per_simulation):
-        for v in velocities:
-            sim.add_run(v=v, n_sim=r)
-    n = [i+1 for i in range(len(velocities))]
+    if option == 'const':
+        velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+        for r in range(repetitions_with_same_parameters):
+            for v in velocities:
+                sim.add_run(v=v, n_sim=r)
+        n = [i+1 for i in range(len(velocities) * repetitions_with_same_parameters)]
+
+
+    if option == 'poly':
+        for r in range(repetitions_with_same_parameters):
+            for v in coeff_of_velocity_polynomial:
+                sim.add_run(v_Coeff=v, n_sim=r)
+        n = [i+1 for i in range(len(coeff_of_velocity_polynomial) * repetitions_with_same_parameters)]
+
 
     if not use_multiprocessing:
         for ni in n:
@@ -98,7 +107,8 @@ if __name__ == '__main__':
     else:
         pool = Pool(processes=n_cores)
         pool.map(sim.start_run, n)
-        for nr in n: sim.start_run(nr)
+        for nr in n:
+            sim.start_run(nr)
 
     for i in n:
         res = sim.average_norm_force_single(i)

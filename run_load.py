@@ -12,7 +12,7 @@ mode = 'fControl'
 ###############################################################################
 option = ''
 name = 'loadrange__0_90__direct_detachment'
-path_to_results_directory = "please fill carefully or comment line out"
+path_to_results_directory = 'please fill carefully or comment leave the string blank'
 
 #store data in ram / write them to text files?
 s_store = False
@@ -44,7 +44,7 @@ step_n_jumps = 4
 
 repetitions_with_same_parameters = 10																																						#|
 
-#configure mulitprocessing
+#configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
 use_multiprocessing = False
 
@@ -58,32 +58,34 @@ use_multiprocessing = False
 #SNIPPET
 #MULTIPLE RUN, GIVEN LOAD
 #==============================================================================
-sim = simulation(   mode,
-                    n_iterations_per_simulation,
-                    n_heads,
-                    name = name,
-                    path = path_to_results_directory,
-                    option = option,
-                    s_store = s_store,
-                    f_store = f_store,
-                    f_sum_store = sum_f_store,
-                    pos_store = pos_store,
-                    writeText = writeText,
-                    bta = beta,
-                    k = kappa,
-                    k_on = k_on,
-                    th = neighbourhood_criterion,
-                    d_t = delta_t,
-                    d = distance_between_binding_sites)
-loads = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
-for r in range(repetitions_with_same_parameters):
-    for f in loads:
-        sim.add_run(loadF=f, n_sim=r)
-n = [i+1 for i in range(len(loads) * repetitions_with_same_parameters)]
-for rn in n:
-	sim.start_run(rn)
-sim.plot_v__f_norm()
-sim.plot_pos(n)
-sim.plot_p(n)
-sim.plot_f(n)
+if __name__ == '__main__':
+    sim = simulation(   mode,
+                        n_iterations_per_simulation,
+                        n_heads,
+                        name = name,
+                        path = path_to_results_directory,
+                        option = option,
+                        s_store = s_store,
+                        f_store = f_store,
+                        f_sum_store = sum_f_store,
+                        pos_store = pos_store,
+                        writeText = writeText,
+                        bta = beta,
+                        k = kappa,
+                        k_on = k_on,
+                        th = neighbourhood_criterion,
+                        d_t = delta_t,
+                        d = distance_between_binding_sites)
+
+    loads = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+    for r in range(repetitions_with_same_parameters):
+        for f in loads:
+            sim.add_run(loadF=f, n_sim=r)
+    n = [i+1 for i in range(len(loads) * repetitions_with_same_parameters)]
+    for rn in n:
+    	sim.start_run(rn)
+    sim.plot_v__f_norm()
+    sim.plot_pos(n)
+    sim.plot_p(n)
+    sim.plot_f(n)
 #==============================================================================
