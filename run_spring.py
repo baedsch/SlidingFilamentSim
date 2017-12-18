@@ -12,7 +12,7 @@ mode = 'springControl'
 ###############################################################################
 option = 'const' #choose from const, poly, step(experimental)
 name = 'please rename'
-path_to_results_directory = 'please fill carefully or comment leave the string blank'
+path_to_results_directory = 'please fill carefully leave the string blank'
 
 #store data in ram / write them to text files?
 s_store = False
@@ -31,7 +31,7 @@ beta = 2.
 kappa = 10.
 stiffness_of_drag_spring = 100.
 k_on = 10.
-neighbourhood_criterion = 0.01
+neighborhood_criterion = 0.01
 start_time = 0.
 distance_between_binding_sites = 2.
 random.seed(121155)
@@ -41,7 +41,7 @@ random.seed(121155)
 step_min_val = 0
 #and
 step_max_val = 20
-#nubber of steps inbetween
+#number of steps in between
 step_n_jumps = 4
 
 repetitions_with_same_parameters = 10																																						#|
@@ -76,7 +76,7 @@ if __name__ == '__main__':
                         bta = beta,
                         k = kappa,
                         k_on = k_on,
-                        th = neighbourhood_criterion,
+                        th = neighborhood_criterion,
                         d_t = delta_t,
                         d = distance_between_binding_sites,
                         k_pull = stiffness_of_drag_spring)

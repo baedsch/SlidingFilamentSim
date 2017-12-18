@@ -318,16 +318,16 @@ class simulation:
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #run actual simulation
-    def start_run(self, runs):
+    def start_run(self, runs, **kwargs):
         #this loop enables running several runs with one function call -> Multiprocessing
         if isinstance(runs, int): runs = [runs]
         for run in runs:
 
-            s = self.s[run]
-            p = self.p[run]
+            s = kwargs.get('s', self.s[run])
+            p = kwargs.get('p', self.p[run])
             sum_F = 0.
-            pos = 0.
-            pos_pull = 0.
+            pos = kwargs.get('pos_filament', 0.)
+            pos_pull = kwargs.get('pos_pull', 0.)
             t = 0.
 
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -426,7 +426,7 @@ class simulation:
 
                     s, p = self.updateV_vC(self, s, p, self.d[run], rand01, run, i, self.bta[run], self.k[run])
                     if self.option[run] == 'poly':
-                        displ = np.polynomial.polynomial.polyval(i, self.v_Coeff[run])
+                        displ = np.polynomial.polynomial.polyval(t, self.v_Coeff[run]) * self.d_t[run]
                     elif self.option[run] == 'step':
                         displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
                     elif self.option[run] == 'const':
@@ -716,8 +716,9 @@ class simulation:
                         f.write('Nrealisation kon timeconstant k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached)\n')
                         f.write('{} {} {} {} {}	{}	{} {} {}\n'.format(self.n_steps[run], self.k_on[run], self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], self.n_heads[run], self.probabilities_p[run]))
 
-
-        return s, p
+        list_to_be_returned = [s, p, pos]
+        if self.mode[run] == 'springControl': list_to_be_returned.append(pos_pull)
+        return list_to_be_returned
 
 #//////////////////////////////////////////////////////////////////////////////
 # END
