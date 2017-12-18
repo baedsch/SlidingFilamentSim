@@ -413,12 +413,12 @@ class simulation:
 
                     s, p = self.updateV_vC(self, s, p, self.d[run], rand01, run, i, self.bta[run], self.k[run])
                     if self.option[run] == 'poly':
-                        displ = np.polynomial.polynomial.polyval(t, self.v_Coeff[run]) * self.d_t[run]
+                        velocity = np.polynomial.polynomial.polyval(t, self.v_Coeff[run])
                     elif self.option[run] == 'step':
-                        displ = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
+                        velocity = h.step_fcn(self.n_steps[run], self.step_n_jumps[run], self.step_min_val[run], self.step_max_val[run], i)
                     elif self.option[run] == 'const':
-                        displ = self.v[run]
-                    pos += displ *  self.d_t[run]
+                        velocity = self.v[run]
+                    pos += velocity *  self.d_t[run]
 
                 #///////////////////////////////////////////////////////////////////////////////
                 #~END~~~~~~~~~~~~~~~~~~~~~V CONTROL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

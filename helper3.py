@@ -28,6 +28,8 @@ unitizeV = np.vectorize(unitize)
 
 #force of each head (also the delta_s between the head and the binding site), to be used with map fcn
 def force(s, p, d):
+    #s is the distance
+    s = wrapping(s, d)
     #case head not attached
     if p == 0:
         return 0.
@@ -55,11 +57,11 @@ k_minV = np.vectorize(k_min)
 #integral of k_min
 def int_k_min(s1, s2, p, bta, k, v):
     root = np.sqrt(bta / (1 + k))
-    
+
     #                                              -V- this v added brcause of variable change
     c = np.sqrt(np.pi * (k + 1) / bta) / (4 * bta * v)
     intt = lambda s: c * (np.exp(bta * (1 + k) / 4) * (special.erf(root * (1 + k + 2*s) / 2) - special.erf(root * (1 + k - 2*s) / 2)))
-    
+
     #######################
 #    X = np.linspace(-20, 20, 2560)
 #    D = intt(X)
@@ -92,13 +94,13 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     s1tw = wrapping(s1t, d)
     s2t = s2 + d/2
     s2tw = wrapping(s2t, d)
-    
+
     b = np.sqrt(bta)
     spi = np.sqrt(np.pi)
     c = 0.5
 #    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
 #    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - (s-d/2))**2)/(spi * b) + np.exp(-b**2 * (c + (s-d/2))**2)/(spi * b) + (s-d/2) * special.erf(b * (c - (s-d/2))) + c * special.erf(b * ((s-d/2) - c)) + c * special.erf(b * (c + (s-d/2))) + (s-d/2) * special.erf(b * (c + (s-d/2))))
-    
+
     #                                              -V- this v added brcause of variable change
 #    integralt = lambda s, i : c * k_on / (b * spi * v) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * (s-d/2) + (s-d/2)**2/2 + c * (i*d + (s-d/2)))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + (s-d/2)))) +
 #    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))) +
@@ -114,12 +116,12 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
 #    plt.show()
     #######################
     int_full_period = lambda i: integralt(0, i) - integralt(d, i)
-    
+
     if s1 == s2: return 0.
     if s2tw >= s1tw and s2 >= s1:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-            
+
             #AAAACHtung: n oder 0 in lambda???
             res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d) * int_full_period(n) #// is floor division in python
 #        print('res.........................................................',res)
@@ -133,7 +135,7 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     elif s2tw >= s1tw and s2 < s1:
         res = 0
         for n in [i - n_neighbours for i in range(2 * n_neighbours + 1)]:
-            
+
             #AAAACHtung: n oder 0 in lambda???
             res += integralt(s2tw, n) - integralt(s1tw, n) + (abs((s2t - s1t)) // d + 1) * int_full_period(n) #// is floor division in python
 #        print('res.........................................................',res)
@@ -145,7 +147,7 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
 #        print('res.........................................................',res)
         return res
     else: raise ValueError()
-    
+
 #attaching rate sum, either feed already wrapped s in or set w=True!
 def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
     if w: s = wrapping(s, d)
@@ -167,7 +169,7 @@ def min_max_plus(n, d, bta, k, k_on, n_neighbours):
     f_values = [k_plus_sum(i, 0, d, bta, k, k_on, n_neighbours) for i in varialbe_values]
     for i in range(len(varialbe_values) - 1):
         res[varialbe_values[i]] = sorted([f_values[i], f_values[i + 1]])
-    
+
     return res
 
 #get minimum and maximum value of k_min within subintervals
@@ -178,7 +180,7 @@ def min_max_min(n, bta, k):
     f_values = [k_min(i, 1, bta, k) for i in varialbe_values]
     for i in range(len(varialbe_values) - 1):
         res[varialbe_values[i]] = sorted([f_values[i], f_values[i + 1]])
-    
+
     return res
 
 def get_max_k_min(bta, k):
@@ -277,7 +279,7 @@ def plot_attach():
     k = 10
     k_on  = 10.
     X = np.linspace(-3.,3., 2560)
-    
+
     D = k_plus(X, 0, 2, bta, k, k_on,w=True)
     plt.figure(figsize=(8,6), dpi=80)
     plt.subplot(111)
