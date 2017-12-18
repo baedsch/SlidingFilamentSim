@@ -4,7 +4,7 @@ from scipy.optimize import curve_fit
 from numpy import random
 import os
 import platform
-
+import time as tme
 
 #import tqdm
 import bisect
