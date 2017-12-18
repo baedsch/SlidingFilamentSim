@@ -1,5 +1,4 @@
-﻿
-# SlidingFilamentSimulation
+﻿# SlidingFilamentSimulation
 
 This software simulates *sliding filaments* [https://en.wikipedia.org/wiki/Sliding_filament_theory](https://en.wikipedia.org/wiki/Sliding_filament_theory)
 
@@ -9,7 +8,6 @@ For further information just create an issue or email me :-)
 
 ## How to use:
 
-<<<<<<< HEAD
 ### **Prepare** the script
 
 #### **Choose operation mode** by choosing the right file:
@@ -17,14 +15,6 @@ For further information just create an issue or email me :-)
  - fixed velocity run (`run_speed.py`) 
  - fixed load run ( `run_load.py`) 
  - spring coupled run (spring anchor driven with fixed velocity) (`run_spring.py`)
-=======
-#### **Choose operation mode** in here:
-
- - fixed velocity run (<i class="icon-file"></i> `run_speed.py`) 
- - fixed load run (<i class="icon-file"></i> `run_load.py`) 
- - spring coupled run (spring anchor driven with fixed velocity) (<i class="icon-file"></i>
-   `run_spring.py`)
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
 
 > **Hint:** You can choose between different options: 
 > 1. **fixed velocity**
@@ -33,7 +23,6 @@ For further information just create an issue or email me :-)
 > 2. **spring**
 > - *stiff*: assume a spring with infinite stiffness. Therefore, the simulation converges to the velocity mode with the difference, that the calculation is exact rather than an approximation
 
-<<<<<<< HEAD
 ####  **Rename your simulation** and specify the results path
 Within the chosen document, look for this section:
 ```python
@@ -47,21 +36,6 @@ Change the option variable, if you want (see hint above). Then, choose a name fo
 Look for a section resembling the following:
 
 ```python
-=======
-#### <i class="icon-pencil"></i> **Rename a document**
-Within the chosen document, look for this section:
-```
-option = ''
-name = 'please rename'
-path_to_results_directory = 'please fill carefully leave the string blank'
-```
-Change the option variable, if you want (see hint above). Then, choose a name for the simulation (in the results folder, a subdirectory will be created, named: date, time, name). Finally, fill in the path to the desired results directory (if you leave it blank, results will be stored in the workdir/res/)
-
-#### <i class="icon-cog"></i>**Set parameters** 
-Look for a section resembling the following:
-
-```
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
 #store data in ram / write them to text files?
 s_store = False
 p_store = True
@@ -72,13 +46,9 @@ pos_store = True
 writeText = True
 ```
 Here, setup which variables you want to store. If you just want to see plots in the end, no need to store anything on the disk: set `writeText = False`; else, all observables above set to `True` will be stored in `.dat` files.
-<<<<<<< HEAD
 
 ---
 ```python
-=======
-```
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
 #most important parameters
 n_heads = int(1e2)
 n_iterations_per_simulation = int(1e4)
@@ -92,13 +62,9 @@ distance_between_binding_sites = 2.
 random.seed(121155)
 ```
 In here, all the physical parameters can be set. Further explanations can be found in the report.
-<<<<<<< HEAD
 
 ---
 ```python
-=======
-```
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
 ############################################
 #####CASE OPTION CONST######################
 #scan for load between
@@ -115,20 +81,15 @@ coeff_of_velocity_polynomial = [[5, 0.], [10, 0.]]
 This is the exemplary part of the `run_speed.py` file. The first part is for scanning a range of different driving velocities. The given example will return later in the code `[0, 5, 10, 15, 20]`
 
 Alternatively, you can set the coefficients $c_i$ of the polynomial $v(t) = c_0 + c_1 \cdot t + \dots + c_n \cdot t^n$
-<<<<<<< HEAD
 
 ---
 ```python
-=======
-```
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
 repetitions_with_same_parameters = 10
 #configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
 use_multiprocessing = False
 ```
 
-<<<<<<< HEAD
 In this very last parameter part, you can define, how many repetitions you want to run (in order to get significant results!). If you feel like experimenting around a bit with multiprocessing to get the simulation done in shorter time, don't hesitate to to set it true. If you do so, make sure, you don't start to many simulations at once (memory overflows can cause your os to crash), also the `n_cores` should not exceed the number of physical cores - 1.
 
 #### **Add runs** to the cue
@@ -191,7 +152,4 @@ Last but not least: the **post processing** and **plotting**...
 > 3. Start with a small number of runs (memory overflow possible, you don't want to wait for your pc when it is trying to store and fetch all the state variables on the disk ;-)
 
 Apart from the notes above, it's just opening a terminal, navigate to the workdir and type `python3 run_speed.py` or one of the other config scripts :-)
-=======
-#### **Add runs** with the sets of parameters with simulation.addrun(parameters in here)
-5. **Run simulations** with the commmand simulation.run(runId), plot stuff, etc
->>>>>>> 8adc779595dd9bc12bb54b9b6015f8f553476963
+
