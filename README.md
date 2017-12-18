@@ -1,4 +1,3 @@
-
 # SlidingFilamentSim
 
 This software simulates *sliding filaments* [https://en.wikipedia.org/wiki/Sliding_filament_theory](https://en.wikipedia.org/wiki/Sliding_filament_theory)
@@ -15,10 +14,10 @@ Supervised by [https://github.com/FWijanto/SlidingFilamentSimulation](https://gi
    `run_spring.py`)
 
 > **Hint:** You can choose between different options: 
-> **fixed velocity**
+> 1. **fixed velocity**
 > - *const*: within one run of the simulation, the velocity, the filament is driven with, is constant
 > - *poly*: the velocity can be defined by any polynomial with given coefficients
-> **spring**
+> 2. **spring**
 > - *stiff*: assume a spring with infinite stiffness. Therefore, the simulation converges to the velocity mode with the difference, that the calculation is exact rather than an approximation
 
 #### <i class="icon-pencil"></i> **Rename a document**
@@ -84,5 +83,3 @@ use_multiprocessing = False
 
 #### **Add runs** with the sets of parameters with simulation.addrun(parameters in here)
 5. **Run simulations** with the commmand simulation.run(runId), plot stuff, etc
-
-    
