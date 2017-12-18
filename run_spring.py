@@ -12,7 +12,7 @@ mode = 'springControl'
 ###############################################################################
 option = 'const' #choose from const, poly, step(experimental)
 name = 'please rename'
-path_to_results_directory = 'please fill carefully leave the string blank'
+path_to_results_directory = 'please fill carefully or leave the string blank'
 
 #store data in ram / write them to text files?
 s_store = False

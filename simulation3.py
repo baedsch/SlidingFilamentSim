@@ -147,7 +147,7 @@ class simulation:
         self.v_axis = [[]]
 
         #PART FOR MULTIPLE SIMULATIONS -> add_simulation
-        self.f_Sum_axis_runs = []
+        self.f_Sum_norm_axis_runs = []
         self.v_axis_runs = []
 
     #similar to __init__
@@ -214,15 +214,6 @@ class simulation:
         self.f_Sum_axis.append([])
         self.v_axis.append([])
 
-    #multiple simulations can be used to organize simulations, new simulation will overwrite all data but the listed down there
-    #attention!!!
-    #might overwright data
-#    def add_simulation(self):
-#        self.n_sim += 1
-#        self.run = 0
-#        #for step simulation in one-run-per-param
-#        self.f_Sum_axis_runs.append([])
-#        self.v_axis_runs.append([])
 
     # initialize a randomly chosen s (resp. p) as a startvector
     def init_s_rand(self):
@@ -745,7 +736,7 @@ class simulation:
         print(sum(self.sum_F[run]))
         f_mean = np.mean(self.sum_F[run][(int(n * equilib_wait_frac)):])
         print(f_mean)
-        self.f_Sum_axis_runs.append(f_mean / self.n_heads[run])
+        self.f_Sum_norm_axis_runs.append(f_mean / self.n_heads[run])
         self.v_axis_runs.append(self.v[run])
 
         while True:
@@ -758,32 +749,7 @@ class simulation:
         return f_mean / self.n_heads[run], self.v[run]
 
 
-    #get the asymptotic velocity value for one run
-    def average_velocity_single(self, run, equilib_wait_frac=0.25):
-        #case no break
-        if self.breakindex[run] == -1: n = self.n_steps[run]
-        #case break: only take data up to breakindex -2 into account
-        else: n = self.breakindex[run] - 2#check?????????????????????????????????????????????????
-
-        t = np.array(self.t[run][int(n * equilib_wait_frac):n])
-        pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
-
-        popt, pcov = curve_fit(h.lin_fit, t, pos)
-        v = popt[0]
-
-        self.f_Sum_axis_runs.append(self.loadF[run])
-        self.v_axis_runs.append(v)
-
-        while True:
-            try:
-                with open('v_F.dat', 'a') as f:
-                    f.write("{} {}\n".format(self.loadF[run], v))
-                break
-            except: print("have to wait for textfile")
-
-        return 1
-
-	#get the asymptotic value for each step of v_step
+    #get the asymptotic value for each step of v_step
     def average_norm_force(self, run, f_Sum, v_step_list, equilib_wait_frac=0.25):
 
         counter = collections.Counter(v_step_list)
@@ -801,6 +767,34 @@ class simulation:
         self.f_Sum_axis[run] = f_Sum_axis
         return v_axis, f_Sum_axis
 
+
+    #get the asymptotic velocity value for one run
+    def average_velocity_single(self, run, equilib_wait_frac=0.25):
+        #case no break
+        if self.breakindex[run] == -1: n = self.n_steps[run]
+        #case break: only take data up to breakindex -2 into account
+        else: n = self.breakindex[run] - 2
+
+        t = np.array(self.t[run][int(n * equilib_wait_frac):n])
+        pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
+
+        popt, pcov = curve_fit(h.lin_fit, t, pos)
+        v = popt[0]
+
+        self.f_Sum_norm_axis_runs.append(self.loadF[run] / self.n_heads[run])
+        self.v_axis_runs.append(v)
+
+        while True:
+            try:
+                with open('v_F.dat', 'a') as f:
+                    f.write("{} {}\n".format(self.loadF[run], v))
+                break
+            except: print("have to wait for textfile")
+
+        return 1
+
+
+    # has to be used in case of steo option in v mode
     def join_steps(self, runs, index):
         runs.sort()
 
@@ -890,11 +884,10 @@ class simulation:
         ax.set_ylabel('Total load normalized')
         color=c
 
-        #self.f_Sum_axis_runs schould be normalized by num of heads!
-        ax.scatter(self.v_axis_runs, self.f_Sum_axis_runs, color=color, s=5)
+        ax.scatter(self.v_axis_runs, self.f_Sum_norm_axis_runs, color=color, s=5)
 
         plt.savefig('f_norm__v.png', dpi=200)
-        print(self.f_Sum_axis_runs)
+        print(self.f_Sum_norm_axis_runs)
 
 
     def plot_v__f_norm(self, leg=False, c='b'):
@@ -908,8 +901,9 @@ class simulation:
         #ax.set_yscale('log')
         color = c
 
-        #self.f_Sum_axis_runs schould be normalized by num of heads!
-        ax.scatter(self.f_Sum_axis_runs, self.v_axis_runs, color=color, s=5)
+        #normalize
+        #self.f_Sum_norm_axis_runs schould be normalized by num of heads!
+        ax.scatter(self.f_Sum_norm_axis_runs, self.v_axis_runs, color=color, s=5)
 
         plt.savefig('v__f_norm.png', dpi=200)
 
