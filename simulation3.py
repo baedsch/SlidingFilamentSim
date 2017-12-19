@@ -81,9 +81,9 @@ class simulation:
         self.store['f'] = kwargs.get('f_store',True)
         if self.store.get('f'): self.F = [np.zeros((n_steps, n_heads))]
         self.store['sum_f'] = kwargs.get('sum_f_store',True)
-        if self.store.get('sum_f'): self.sum_F = [np.zeros((n_steps,1))]
+        if self.store.get('sum_f'): self.sum_F = [np.zeros(n_steps)]
         self.store['sum_p'] = kwargs.get('sum_p_store',True)
-        if self.store.get('sum_p'): self.sum_P = [np.zeros((n_steps,1))]
+        if self.store.get('sum_p'): self.sum_P = [np.zeros(n_steps)]
 
         #write the stored variables into textfiles?
         self.writeText = kwargs.get('writeText', False)
@@ -202,8 +202,8 @@ class simulation:
         if self.store.get('pos_pull') or self.mode[self.run] in ['springControl']: self.Pos_pull.append(np.zeros((self.n_steps[self.run],1)))
         if self.store.get('p'): self.P.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('f'): self.F.append(np.zeros((self.n_steps[run], self.n_heads[run])))
-        if self.store.get('sum_f'): self.sum_F.append(np.zeros((self.n_steps[run],1)))
-        if self.store.get('sum_p'): self.sum_P.append(np.zeros((self.n_steps[run],1)))
+        if self.store.get('sum_f'): self.sum_F.append(np.zeros(self.n_steps[run]))
+        if self.store.get('sum_p'): self.sum_P.append(np.zeros(self.n_steps[run]))
 
         self.breakindex.append(-1)
         #normalized per head
@@ -270,12 +270,11 @@ class simulation:
     #K_sum is the sum of this row
     def update_fC(self, s, p, d, K_plus, K_sum, run):
         #case: unbound
-        if h.unitize(p) == 0:
+        if p == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
-
             #s becomes ~y: it is the distance between attached head and anchor
             s = h.wrapping(s, self.d[run])
-            if p > 0: s += (p - 1) * d
+            if p >= 0: s += (p - 1) * d
             elif p < 0: s += p * d
             else: raise ValueError("something wrong with p")
 
@@ -326,9 +325,6 @@ class simulation:
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
             #random numbers for udating (for 'fControl', we need two sets, for springControl three)
-#            if self.mode[run] in ['vControl']:
-#                print('rand creates')
-#                rand01 = random.random_sample((self.n_steps[run], self.n_heads[run]))
 
             if self.mode[run] in ['fControl']:
                 rand011 = random.random_sample(self.n_steps[run])
@@ -338,12 +334,12 @@ class simulation:
                 f = h.forceV(s, p, self.d[run])
 
                 sum_F = sum(f)
-                #~ print sum_F
+
                 n_att = sum(h.unitizeV(p))
-                #~ print n_att
+
                 displ = -(sum_F - self.loadF[run]) / n_att
-                #~ print displ
-                s = h.translateV(s, displ)
+
+                s = s + displ
                 pos += displ
 
             if self.mode[run] in ['springControl']:
@@ -392,7 +388,7 @@ class simulation:
             for i in range(self.n_steps[run]):
 
                 #calculate force, f contains all forces of each head, sum_F is total load on filament
-                f = h.forceV(s, p, self.d[run])
+                f = h.force(s, p, self.d[run])
                 sum_F = sum(f)
                 sum_P = sum(h.unitize(p))
 
@@ -451,7 +447,7 @@ class simulation:
                     k_plus_sum = h.k_plus_sum(s, p, self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
                     k_min = h.k_minV(s, p, self.bta[run], self.k[run])
                     k = k_plus_sum + k_min
-                    k_a = list(itertools.accumulate(k))
+                    k_a = np.add.accumulate(k)
                     k_sum = sum(k_plus_sum + k_min)
 
                     #find the result for the waiting time
@@ -471,23 +467,22 @@ class simulation:
                     p[min_index] = p_upd
 
                     #calculate force vector of updated state and the delta
-                    f = h.forceV(s, p, self.d[run])
+                    f = h.force(s, p, self.d[run])
                     f_delta = sum(f) - self.loadF[run]
 
+                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
+                    n_att = sum(h.unitize(p))
+
                     #calculate corresponding displacement
-                    displ = -f_delta / float(n_att)
+                    displ = -f_delta / n_att
 
                     #updating filament position and s positions
                     pos += displ
-                    s = h.translateV(s, displ)
+                    s = s + displ
 
                     #updating the elapsed time
-                    #~ print tau_min
                     t += tau
                     self.t[run][i] = t
-
-                    #calculate number of attached heads BEFORE AND AFTER UPDATE STEP
-                    n_att = sum(h.unitizeV(p))
 
                     #check again, if connection broke
                     if n_att == 0:
@@ -633,11 +628,15 @@ class simulation:
                 print('n_k_p_nu:', n_k_p_nu)
                 print('n_k_m_u:', n_k_m_u)
                 print('n_k_m_nu:', n_k_m_nu)
-            if self.mode[run] in ['springControl', 'fControl']:print('n_dd:', n_dd)
+            if self.mode[run] in ['springControl', 'fControl']: print('n_dd:', n_dd)
 
-            #preparing the time vector to be added in first column of each file
+            #preparing the vectors to be added in first column of each file
             t_w = self.t[run][np.newaxis]
             t_w = t_w.T
+            sum_F_w = self.sum_F[run]
+            sum_F_w = sum_F_w.T
+            sum_P_w = self.sum_P[run]
+            sum_P_w = sum_P_w.T
 
             if self.option[run] in ['const', 'poly'] and self.mode[run] == 'vControl':
                 self.average_norm_force_single(run)
@@ -677,19 +676,19 @@ class simulation:
                         np.savetxt('sum_F_{}_Run_{}.dat'.format(run, self.n_sim[run]), F_out, header='time, force applied by each head')
                 if self.store.get('sum_f'):
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_F[run], header='time, force applied by each head')
+                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), sum_F_w, header='time, force applied by each head')
                     elif self.mode[run] == 'fControl':
-                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.sum_F[run], header='time, force applied by each head')
+                        np.savetxt('ftotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), sum_F_w, header='time, force applied by each head')
                     else:
-                        sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
+                        sum_F_out = np.concatenate((t_w, sum_F_w), axis=1)
                         np.savetxt('sum_F_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='time, force applied by each head')
                 if self.store.get('sum_p'):
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
-                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.sum_P[run], header='heads attached')
+                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), sum_P_w, header='heads attached')
                     elif self.mode[run] == 'fControl':
-                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), self.sum_P[run], header='heads attached')
+                        np.savetxt('ptotal_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.loadF[run], self.n_sim[run]), sum_P_w, header='heads attached')
                     else:
-                        sum_F_out = np.concatenate((t_w, self.sum_F[run]), axis=1)
+                        sum_F_out = np.concatenate((t_w, sum_F_w), axis=1)
                         np.savetxt('sum_P_{}_{}.dat'.format(run, self.n_sim[run]), sum_F_out, header='heads attached')
 
                 #write simulation parameters
@@ -723,12 +722,12 @@ class simulation:
 #
 ###############################################################################
 
-    #takes the P array and returns the sum of bound heads for each timestep (after simulation)
-    def sum_up_P(self, run):
-        for p in self.P[run]:
-            s = sum(h.unitize(p))
-            self.sum_P[run] = np.append(self.sum_P[run], s)
-        return self.sum_P[run]
+    #takes the P array and returns the sum of bound heads for each timestep (after simulation), experimental
+#    def sum_up_P(self, run):
+#        for p in self.P[run]:
+#            s = sum(h.unitize(p))
+#            self.sum_P[run] = np.append(self.sum_P[run], s)
+#        return self.sum_P[run]
 
     #get the asymptotic force value for one run
     def average_norm_force_single(self, run, equilib_wait_frac=0.25):

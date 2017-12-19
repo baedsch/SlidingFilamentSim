@@ -22,17 +22,17 @@ def unitize(array):
     if type(array).__name__ in ['int', 'float']:
         return float(array != 0)
     else:
-        raise AssertionError('Has to be numpy array, int or float')
+        raise ValueError('Has to be numpy array, int or float')
+
 #vectorize it in order to enhance performance
 unitizeV = np.vectorize(unitize)
 
 #force of each head (also the delta_s between the head and the binding site), to be used with map fcn
 def force(s, p, d):
     #s ~y for attached heads, see update functions
-    if p == 0:
-        return 0
-    else:
-        return s
+    p = p != 0
+    #elementwise
+    return s * p
 
 #vectorize it in order to enhance performance
 forceV = np.vectorize(force)
@@ -122,7 +122,7 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     else: raise ValueError()
 
 #attaching rate sum, either feed already wrapped s in or set w=True!
-def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=False):
+def k_plus_sum(s, p, d, bta, k, k_on, n_neighbours,  w=True):
     if w: s = wrapping(s, d)
     pU = unitize(p)
     b = np.sqrt(bta)
