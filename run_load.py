@@ -17,7 +17,7 @@ path_to_results_directory = 'please fill carefully or leave the string blank'
 #store data in ram / write them to text files?
 s_store = False
 p_store = True
-f_store = False
+f_store = True
 sum_f_store = True
 sum_p_store = False
 pos_store = True
@@ -38,11 +38,12 @@ random.seed(121155)
 #scan for load between
 step_min_val = 0
 #and
-step_max_val = 5
+step_max_val = 20
 #number of steps in between
-step_n_jumps = 4
+step_n_jumps = 5
 
-repetitions_with_same_parameters = 10																																						#|
+repetitions_with_same_parameters = 10
+
 
 #configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
