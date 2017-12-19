@@ -58,15 +58,6 @@ def int_k_min(s1, s2, p, bta, k, v):
     c = np.sqrt(np.pi * (k + 1) / bta) / (4 * bta * v)
     intt = lambda s: c * (np.exp(bta * (1 + k) / 4) * (special.erf(root * (1 + k + 2*s) / 2) - special.erf(root * (1 + k - 2*s) / 2)))
 
-    #######################
-#    X = np.linspace(-20, 20, 2560)
-#    D = intt(X)
-#    plt.figure(figsize=(8,6), dpi=80)
-#    plt.subplot(111)
-#    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
-#
-#    plt.show()
-    #######################
     return abs(intt(s2) - intt(s1))
 
 #attaching rate (+V) to be used with map fcn, either feed already wrapped s in or set w=True!
@@ -94,23 +85,9 @@ def int_k_plus_sum(s1, s2, d, bta, k, k_on, n_neighbours, v, w=False):
     b = np.sqrt(bta)
     spi = np.sqrt(np.pi)
     c = 0.5
-#    integral = lambda s : c * k_on * ((c-(s-d/2)) * special.erf(b * ((s-d/2)-c)) + (c+(s-d/2)) * special.erf(b * ((s-d/2)+c)) - np.exp(-b * (c+(s-d/2))**2) * (np.exp(2 * b**2 * (s-d/2)) - 1) / (np.sqrt(np.pi) * b))
-#    integral = lambda s : c * k_on * (-np.exp(-b**2 * (c - (s-d/2))**2)/(spi * b) + np.exp(-b**2 * (c + (s-d/2))**2)/(spi * b) + (s-d/2) * special.erf(b * (c - (s-d/2))) + c * special.erf(b * ((s-d/2) - c)) + c * special.erf(b * (c + (s-d/2))) + (s-d/2) * special.erf(b * (c + (s-d/2))))
 
-    #                                              -V- this v added brcause of variable change
-#    integralt = lambda s, i : c * k_on / (b * spi * v) * np.exp(-bta * 2 * (c**2 + (i*d)**2 + i*d * (s-d/2) + (s-d/2)**2/2 + c * (i*d + (s-d/2)))) * (np.exp(bta * (c**2 + (i*d)**2)) - np.exp(bta * (c**2 + (i*d)**2 + 4 * c * (i*d + (s-d/2)))) +
-#    -b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))) +
-#    b * spi * np.exp(bta * (c**2 + (i*d)**2 + (c+i*d)**2 + 2 * c * (c + i*d) * (s-d/2) + (s-d/2)**2)) * (c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))))
     integralt = lambda s, i : c * k_on / (b * spi * v) * (np.exp(-bta * ((c + i*d + (s-d/2))**2)) - np.exp(-bta * ((-c + i*d + (s-d/2))**2))) + 1/v * c * k_on * ((c + i*d + (s-d/2)) * special.erf(b * (c + i*d + (s-d/2))) - (-c + i*d + (s-d/2)) * special.erf(b * (-c + i*d + (s-d/2))))
-    #######################
-#    X = np.linspace(-2*d, 2*d, 2560)
-#    D = integralt(X, 0)
-#    plt.figure(figsize=(8,6), dpi=80)
-#    plt.subplot(111)
-#    plt.plot(X, D, color="blue", linewidth=1.0, linestyle="-")
-#
-#    plt.show()
-    #######################
+
     int_full_period = lambda i: integralt(0, i) - integralt(d, i)
 
     if s1 == s2: return 0.

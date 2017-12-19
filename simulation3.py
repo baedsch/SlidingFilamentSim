@@ -794,7 +794,7 @@ class simulation:
         return 1
 
 
-    # has to be used in case of steo option in v mode
+    # has to be used in case of step option in v mode
     def join_steps(self, runs, index):
         runs.sort()
 
@@ -814,7 +814,6 @@ class simulation:
     def plot_p(self, run, leg=False):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -835,7 +834,6 @@ class simulation:
     def plot_f(self, run, leg=False):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -856,7 +854,6 @@ class simulation:
     def plot_f_norm(self, run, leg=False):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -895,9 +892,9 @@ class simulation:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
-        ax.set_xlabel('Total load')
-        ax.set_ylabel('velocity [m/s]')
+        ax.set_title('Average velocity (mode: {})'.format(self.mode[0]))
+        ax.set_xlabel('Normalized load')
+        ax.set_ylabel('velocity')
         #ax.set_yscale('log')
         color = c
 
@@ -910,12 +907,11 @@ class simulation:
     def plot_pos(self, run, leg=False):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Position filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_title('Position filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('time [s]')
         ax.set_ylabel('position')
 
@@ -931,14 +927,13 @@ class simulation:
     def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Load per head on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_title('Load on filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('velocity')
-        ax.set_ylabel('Total load')
+        ax.set_ylabel('load')
         val = 0
 
         for r in run:
@@ -953,13 +948,12 @@ class simulation:
     def plot_v_step(self, run, leg=False, c='b'):
         if isinstance(run, int):
             run = [run]
-            print('input into list')
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Velocity of filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
-        ax.set_xlabel('jump [arb. time]')
+        ax.set_title('Velocity of filament, mode: {}'.format(self.mode[run[0]]))
+        ax.set_xlabel('jump')
         ax.set_ylabel('velocity')
 
         for r in run:
