@@ -250,6 +250,8 @@ class simulation:
             K_sum = sum(K_plus)
             if r01 <= K_sum * self.d_t[run]:
                 p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
+
+                #s becomes ~y: it is the distance between attached head and anchor
                 s = h.wrapping(s, self.d[run])
                 if p > 0: s += (p - 1) * d
                 elif p < 0: s += p * d
@@ -270,7 +272,8 @@ class simulation:
         #case: unbound
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
-            #wrapping in here is mandatory for force calclation
+
+            #s becomes ~y: it is the distance between attached head and anchor
             s = h.wrapping(s, self.d[run])
             if p > 0: s += (p - 1) * d
             elif p < 0: s += p * d
@@ -287,7 +290,8 @@ class simulation:
         #case: unbound
         if h.unitize(p) == 0:
             p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
-            #wrapping in here is mandatory for force calclation
+
+            #s becomes ~y: it is the distance between attached head and anchor
             s = h.wrapping(s, d)
             if p > 0: s += (p - 1) * d
             elif p < 0: s += p * d

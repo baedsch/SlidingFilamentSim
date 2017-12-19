@@ -28,28 +28,18 @@ unitizeV = np.vectorize(unitize)
 
 #force of each head (also the delta_s between the head and the binding site), to be used with map fcn
 def force(s, p, d):
-    #s is \tilde{y} for attached heads, see report
+    #s ~y for attached heads, see update functions
     if p == 0:
         return 0
     else:
         return s
 
-#    s = wrapping(s, d)
-#    #case head not attached
-#    if p == 0:
-#        return 0.
-#    #case head position in closest interval or s >= d/2
-#    if p > 0:
-#        return s + (p - 1) * d
-#    #case head position  s <= -d/2
-#    if p < 0:
-#        return s + p * d
 #vectorize it in order to enhance performance
 forceV = np.vectorize(force)
 
 #detaching rate(s,p,beta,k) to be used with map fcn
 def k_min(s, p, bta, k):
-    #s is \tilde{y} for attached heads, see report
+    #s ~y for attached heads, see update functions
     pU = unitize(p)
     sSq = s**2
 
