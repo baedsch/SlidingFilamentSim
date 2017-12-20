@@ -569,7 +569,7 @@ class simulation:
                         v = delta_pos / tau
                         #attention! could be too many subtractions (optimization could be good...)
                         prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
-                        if rand013[i] < prob / (k_plus_max * tau):
+                        if rand013[i] < (abs(prob) / (k_plus_max * tau)):
                             n_k_p_u +=1
                             #rows are line vector containing head pos relative to neighbours taken into account and derived values
                             s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
@@ -586,9 +586,8 @@ class simulation:
                         #average velocity during waiting time(for integration in prob)
                         v = delta_pos / tau
                         prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
-                        prob = abs(prob)
 
-                        if rand013[i] < abs(prob) / (k_min_max * tau):
+                        if rand013[i] < (abs(prob) / (k_min_max * tau)):
                             n_k_m_u +=1
                             #update step
                             s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
