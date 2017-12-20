@@ -40,7 +40,7 @@ step_min_val = 0
 #and
 step_max_val = 20
 #number of steps in between
-step_n_jumps = 5
+step_n_jumps = 4
 
 repetitions_with_same_parameters = 10
 

@@ -47,7 +47,7 @@ def k_min(s, p, bta, k):
         return pU * np.exp(-(bta * sSq) / (1 + k)) * np.cosh(bta * s)
 
     else:
-        return 1e50
+        ValueError("Direct detachment dos not work")
 k_minV = np.vectorize(k_min)
 
 #integral of k_min
@@ -349,7 +349,7 @@ def det_p(values, probabilities, norm):
 
 #returns 2dArray with attachment rates as entries acc to s_matrix values (see above) OBSOLETE
 def k_plus_matrix(s_mat, p, d, bta, k, k_on):
-    return     k_plus(s_mat, p, d, bta, k, k_on)
+    return k_plusV(s_mat, p, d, bta, k, k_on)
 k_plus_matrixV = np.vectorize(k_plus_matrix)
 
 #there is a function which does this np.random.choise(values, p=probabilities)

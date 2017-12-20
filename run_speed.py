@@ -40,9 +40,9 @@ random.seed(121155)
 #scan for load between
 step_min_val = 0
 #and
-step_max_val = 20
+step_max_val = 1.2
 #number of steps in between
-step_n_jumps = 4
+step_n_jumps = 2
 
 #####CASE OPTION POLY#######################
 coeff_of_velocity_polynomial = [[5, 0.], [10, 0.]]

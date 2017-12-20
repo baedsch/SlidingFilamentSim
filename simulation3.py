@@ -246,7 +246,8 @@ class simulation:
 
         #case: unbound
         if h.unitize(p) == 0:
-            K_plus = h.k_plus(h.s_row(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]), p, self.d[run], self.bta[run], self.k[run], self.k_on[run])
+            #must not wrap s_row in k_plus!!!!!!!!!
+            K_plus = h.k_plus(h.s_row(h.wrapping(s, self.d[run]), self.n_neighbours[run], self.d[run]), p, self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
             K_sum = sum(K_plus)
             if r01 <= K_sum * self.d_t[run]:
                 p = h.det_p(h.p_row(self.n_neighbours[run]), K_plus, K_sum)
@@ -456,7 +457,9 @@ class simulation:
                     #get index of selected head
                     min_index = bisect.bisect_left(k_a, k_sum * rand012[i])
                     s_row = h.s_row(h.wrapping(s[min_index],self.d[run]), self.n_neighbours[run], self.d[run])
-                    k_plus_row = h.k_plus_matrix(s_row, p[min_index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+
+                    #must not wrap s_row in k_plus!!!!!!!!!
+                    k_plus_row = h.k_plus(s_row, p[min_index], self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
 
                     #update this head, calculate the force difference
                     s_i, p_i = s[min_index], p[min_index]
@@ -570,7 +573,9 @@ class simulation:
                             n_k_p_u +=1
                             #rows are line vector containing head pos relative to neighbours taken into account and derived values
                             s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
-                            k_plus_row = h.k_plus_matrix(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run])
+
+                            #must not wrap s_row in k_plus!!!!!!!!!
+                            k_plus_row = h.k_plus(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
                             #update step
                             s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
                         else: n_k_p_nu +=1
