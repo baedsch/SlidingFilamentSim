@@ -637,10 +637,11 @@ class simulation:
             #preparing the vectors to be added in first column of each file
             t_w = self.t[run][np.newaxis]
             t_w = t_w.T
-            sum_F_w = self.sum_F[run]
+            sum_F_w = self.sum_F[run][np.newaxis]
             sum_F_w = sum_F_w.T
-            sum_P_w = self.sum_P[run]
+            sum_P_w = self.sum_P[run][np.newaxis]
             sum_P_w = sum_P_w.T
+
 
             if self.option[run] in ['const', 'poly'] and self.mode[run] == 'vControl':
                 self.average_norm_force_single(run)
