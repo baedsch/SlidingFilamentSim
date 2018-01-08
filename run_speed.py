@@ -11,8 +11,8 @@ mode = 'vControl'
 #
 ###############################################################################
 option = 'const' #choose from const, poly, step
-name = 'please rename'
-path_to_results_directory = 'please fill carefully or leave the string blank'
+name = 'curve'
+path_to_results_directory = ''
 
 #store data in ram / write them to text files?
 s_store = False
@@ -25,7 +25,7 @@ writeText = True
 
 #most important parameters
 n_heads = int(1e2)
-n_iterations_per_simulation = int(1e4)
+n_iterations_per_simulation = int(6e3)
 delta_t = 5e-3
 beta = 2.
 kappa = 10.
@@ -38,17 +38,17 @@ random.seed(121155)
 ############################################
 #####CASE OPTION CONST######################
 #scan for load between
-step_min_val = 0
+step_min_val = 5.5
 #and
-step_max_val = 1.2
+step_max_val = 15
 #number of steps in between
-step_n_jumps = 2
+step_n_jumps = 1
 
 #####CASE OPTION POLY#######################
 coeff_of_velocity_polynomial = [[5, 0.], [10, 0.]]
 ############################################
 
-repetitions_with_same_parameters = 10																																						#|
+repetitions_with_same_parameters = 5																																				#|
 
 #configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
@@ -88,11 +88,12 @@ if __name__ == '__main__':
 
     if option == 'const':
         velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+#        velocities = [10]
         for r in range(repetitions_with_same_parameters):
             for v in velocities:
                 sim.add_run(v=v, n_sim=r)
         n = [i+1 for i in range(len(velocities) * repetitions_with_same_parameters)]
-
+        print('{} Runs in total'.format(len(n)))
 
     if option == 'poly':
         for r in range(repetitions_with_same_parameters):
@@ -110,8 +111,6 @@ if __name__ == '__main__':
         for nr in n:
             sim.start_run(nr)
 
-    for i in n:
-        res = sim.average_norm_force_single(i)
     sim.plot_f_norm__v()
     sim.plot_pos(n)
     sim.plot_p(n)
