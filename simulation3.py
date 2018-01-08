@@ -5,6 +5,7 @@ from numpy import random
 import os
 import platform
 import time as tme
+import math
 
 #import tqdm
 import bisect
@@ -334,7 +335,7 @@ class simulation:
                 rand012 = random.random_sample(self.n_steps[run])
                 n_dd = 0
                 #stretching to desired force
-                f = h.forceV(s, p, self.d[run])
+                f = h.force(s, p, self.d[run])
 
                 sum_F = sum(f)
 
@@ -343,6 +344,7 @@ class simulation:
                 displ = -(sum_F - self.loadF[run]) / n_att
 
                 s = s + displ
+
                 pos += displ
 
             if self.mode[run] in ['springControl']:
@@ -434,7 +436,7 @@ class simulation:
                 elif self.mode[run] == 'fControl':
                     #immediate detachment if heads too far away from binding site
                     for hi in range(self.n_heads[run]):
-                        if h.unitize(p[hi]) and abs(s[hi]) > (1 + self.k[run]) / 2:
+                        if p[hi] != 0 and abs(s[hi]) >= (1 + self.k[run]) / 2:
                              p[hi] = 0
                              n_dd += 1
 
@@ -454,7 +456,7 @@ class simulation:
                     k_sum = sum(k_plus_sum + k_min)
 
                     #find the result for the waiting time
-                    tau = -1 / k_sum * np.log(rand011[i])
+                    tau = -np.log(rand011[i]) / k_sum
 
                     #get index of selected head
                     min_index = bisect.bisect_left(k_a, k_sum * rand012[i])
@@ -487,6 +489,8 @@ class simulation:
 
                     #updating the elapsed time
                     t += tau
+                    if math.isnan(t):
+                        ValueError('tau is nan')
                     self.t[run][i] = t
 
                     #check again, if connection broke
@@ -780,10 +784,10 @@ class simulation:
         if self.breakindex[run] == -1: n = self.n_steps[run]
         #case break: only take data up to breakindex -2 into account
         else: n = self.breakindex[run] - 2
-
+        print(self.sum_P[run][-1], 'Das ist die Anzahl der att heads')
         t = np.array(self.t[run][int(n * equilib_wait_frac):n])
         pos = self.Pos[run][int(n * equilib_wait_frac):n,0]
-
+#        print(t,pos)
         popt, pcov = curve_fit(h.lin_fit, t, pos)
         v = popt[0]
 

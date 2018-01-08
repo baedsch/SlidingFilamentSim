@@ -40,14 +40,16 @@ forceV = np.vectorize(force)
 #detaching rate(s,p,beta,k) to be used with map fcn
 def k_min(s, p, bta, k):
     #s ~y for attached heads, see update functions
-    pU = unitize(p)
+#    pU = unitize(p)
+    pU = p != 0
     sSq = s**2
+    if abs(s) > (1 + k) / 2 and pU:
+        raise ValueError("Direct detachment dos not work")
 
-    if abs(s) < (1 + k) / 2:
-        return pU * np.exp(-(bta * sSq) / (1 + k)) * np.cosh(bta * s)
+    return pU * np.exp(-(bta * sSq) / (1 + k)) * np.cosh(bta * s)
 
-    else:
-        ValueError("Direct detachment dos not work")
+
+
 k_minV = np.vectorize(k_min)
 
 #integral of k_min
