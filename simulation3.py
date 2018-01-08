@@ -259,7 +259,9 @@ class simulation:
                 else: raise ValueError("something wrong with p")
         #case: bound
         else:
-            if r01 <= h.k_min(h.force(s, p, self.d[run]), p, bta, k) * self.d_t[run]:
+            if abs(s) >= (1 + k) / 2:
+                p = 0
+            elif r01 <= h.k_min(h.force(s, p, self.d[run]), p, bta, k) * self.d_t[run]:
                 p = 0
 
         return s, p
