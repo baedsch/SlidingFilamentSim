@@ -35,7 +35,7 @@ class simulation:
         if mode in ['vControl', 'fControl', 'springControl']: self.mode = [mode]
         else: raise ValueError('Wrong mode chosen')
         self.option = [kwargs.get('option', '')]
-        if not kwargs.get('option', '') in ['poly', 'step', 'const', '']: raise ValueError('Wrong option chosen')
+        if not kwargs.get('option', '') in ['poly', 'step', 'const', 'loop', '']: raise ValueError('Wrong option chosen')
         self.args_passed = [kwargs]
 
         self.d = [kwargs.get('d', 2.)]
@@ -157,7 +157,7 @@ class simulation:
         if mode in ['vControl', 'fControl', 'springControl']: self.mode.append(kwargs.get('mode', self.mode[self.run]))
         else: raise ValueError('Wrong mode chosen')
         self.option.append(kwargs.get('option', self.option[self.run]))
-        if not self.option[-1] in ['poly', 'step', 'const', '']: raise ValueError('Wrong option chosen')
+        if not self.option[-1] in ['poly', 'step', 'const', 'loop', '']: raise ValueError('Wrong option chosen')
         self.args_passed.append(kwargs)
 
         self.d.append(kwargs.get('d', self.d[self.run]))
@@ -361,18 +361,18 @@ class simulation:
                 print('k_min_max:', k_min_max)
                 k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
                 print('k_plus_max:', k_plus_max)
+                if not self.option[run] == 'loop':
+                    #stretching to desired force
+                    f = h.force(s, p, self.d[run])
 
-                #stretching to desired force
-                f = h.forceV(s, p, self.d[run])
-
-                sum_F = sum(f)
-                print(sum_F)
-                n_att = sum(h.unitizeV(p))
-                print(n_att)
-                displ = + sum_F / (n_att + self.k_pull[run])
-                print(displ)
-                s = h.translateV(s, displ)
-                pos += displ
+                    sum_F = sum(f)
+                    print(sum_F)
+                    n_att = sum(h.unitizeV(p))
+                    print(n_att)
+                    displ = + sum_F / (n_att + self.k_pull[run])
+                    print(displ)
+                    s = h.translateV(s, displ)
+                    pos += displ
 
             #///////////////////////////////////////////////////////////////////////////////
             #~END~~~~~~~~~~~~~~~~~~~~~ SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~
@@ -564,41 +564,68 @@ class simulation:
 
                     s_i, p_i = s[index], p[index]
 
-                    #verify the head selection: if RN < prob, head is accepted, prob is integrated rate k(t) dt
-                    ##begin case: distinguish between
-                        # bound -> unbound case (simple)
-                        # unbound -> bound case (complicated, because sum over complicated integrals)
-                    #incrementing variables e.g. n_k_p_u for debugging
-                    #case: unbound
-                    if h.unitize(p[index]) == 0:
-                        ##calculate probability ratio in order to verify head selection
-                        v = delta_pos / tau
-                        #attention! could be too many subtractions (optimization could be good...)
-                        prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
-                        if rand013[i] < (abs(prob) / (k_plus_max * tau)):
-                            n_k_p_u +=1
-                            #rows are line vector containing head pos relative to neighbours taken into account and derived values
-                            s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
+                    #verify the head selection: if RN < rate ratio (acutal over max), head is accepted, case v_pull = 0
+                    if self.v_pull[run] == 0:
+                        #case: unbound
+                        if h.unitize(p[index]) == 0:
+                            rate = h.k_plus_sum(s[index], p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run],  w=True)
+                            if rand013[i] < (abs(rate) / (k_plus_max)):
+                                n_k_p_u +=1
+                                #rows are line vector containing head pos relative to neighbours taken into account and derived values
+                                s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
 
-                            #must not wrap s_row in k_plus!!!!!!!!!
-                            k_plus_row = h.k_plus(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
-                            #update step
-                            s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
-                        else: n_k_p_nu +=1
+                                #must not wrap s_row in k_plus!!!!!!!!!
+                                k_plus_row = h.k_plus(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
+                                #update step
+                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
+                            else: n_k_p_nu +=1
 
-                    #case: bound
+                        #case: bound
+                        else:
+                            ##calculate actual rate ratio in order to verify head selection
+                            rate = h.k_min(s[index], p[index], self.bta[run], self.k[run])
+
+                            if rand013[i] < (abs(rate) / (k_min_max)):
+                                n_k_m_u +=1
+                                #update step
+                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
+                            else: n_k_m_nu +=1
                     else:
-                        ##calculate probability ratio in order to verify head selection
-                        #average velocity during waiting time(for integration in prob)
-                        v = delta_pos / tau
-                        prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
+                        #verify the head selection: if RN < prob ratio (acutal over max), head is accepted, prob is integrated rate k(t) dt
+                        ##begin case: distinguish between
+                            # bound -> unbound case (simple)
+                            # unbound -> bound case (complicated, because sum over complicated integrals)
+                        #incrementing variables e.g. n_k_p_u for debugging
+                        #case: unbound
+                        if h.unitize(p[index]) == 0:
+                            ##calculate probability ratio in order to verify head selection
+                            v = delta_pos / tau
+                            #attention! could be too many subtractions (optimization could be good...)
+                            prob = h.int_k_plus_sum(s[index] - delta_pos, s[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run], v)
+                            if rand013[i] < (abs(prob) / (k_plus_max * tau)):
+                                n_k_p_u +=1
+                                #rows are line vector containing head pos relative to neighbours taken into account and derived values
+                                s_row = h.s_row(h.wrapping(s[index],self.d[run]), self.n_neighbours[run], self.d[run])
 
-                        if rand013[i] < (abs(prob) / (k_min_max * tau)):
-                            n_k_m_u +=1
-                            #update step
-                            s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
-                        else: n_k_m_nu +=1
-                    ##end case
+                                #must not wrap s_row in k_plus!!!!!!!!!
+                                k_plus_row = h.k_plus(s_row, p[index], self.d[run], self.bta[run], self.k[run], self.k_on[run], w=False)
+                                #update step
+                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], k_plus_row, sum(k_plus_row), run)
+                            else: n_k_p_nu +=1
+
+                        #case: bound
+                        else:
+                            ##calculate probability ratio in order to verify head selection
+                            #average velocity during waiting time(for integration in prob)
+                            v = delta_pos / tau
+                            prob = h.int_k_min(s[index] - delta_pos, s[index], p[index], self.bta[run], self.k[run], v)
+
+                            if rand013[i] < (abs(prob) / (k_min_max * tau)):
+                                n_k_m_u +=1
+                                #update step
+                                s[index], p[index] = self.update_sC(s[index], p[index], self.d[run], 0, 0, run)
+                            else: n_k_m_nu +=1
+
 
                     s_upd, p_upd = s[index], p[index]
                     n_att_upd = sum(h.unitizeV(p))
@@ -633,7 +660,7 @@ class simulation:
             #//////////////////////////////////////////////////////////////////
 
             #option for debugging / understand what was going on during simulation
-            if self.mode[run] == 'springControl' and False:
+            if self.mode[run] == 'springControl' and True:
                 print('n_k_p_u:', n_k_p_u)
                 print('n_k_p_nu:', n_k_p_nu)
                 print('n_k_m_u:', n_k_m_u)
@@ -828,9 +855,10 @@ class simulation:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Time evolution of bound heads ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_title('Time evolution of bound heads, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('time [s]')
         ax.set_ylabel('bound heads')
+        ax.tick_params(direction = 'in', top = True, right = True)
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -839,7 +867,7 @@ class simulation:
                 ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_P[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
-        plt.savefig('Sum_p.png', dpi=200)
+        plt.savefig('Sum_p.pdf', dpi=200)
 
     def plot_f(self, run, leg=False):
         if isinstance(run, int):
@@ -848,9 +876,10 @@ class simulation:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
+        ax.set_title('Total load on filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('time [s]')
         ax.set_ylabel('Total load')
+        ax.tick_params(direction = 'in', top = True, right = True)
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -859,7 +888,7 @@ class simulation:
                 ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_F[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
-        plt.savefig('Sum_f.png', dpi=200)
+        plt.savefig('Sum_f.pdf', dpi=200)
 
     def plot_f_norm(self, run, leg=False):
         if isinstance(run, int):
@@ -871,6 +900,7 @@ class simulation:
         ax.set_title('Total load on filament ({} run(s)), mode: {}'.format(len(run), self.mode[run[0]]))
         ax.set_xlabel('time [s]')
         ax.set_ylabel('Total load normalized')
+        ax.tick_params(direction = 'in', top = True, right = True)
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -879,7 +909,7 @@ class simulation:
                 ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.sum_F[r] / float(self.n_heads[r]), linewidth=1.0, linestyle="-")
         if leg: ax.legend()
-        plt.savefig('Sum_f.png', dpi=200)
+        plt.savefig('Sum_f.pdf', dpi=200)
 
     def plot_f_norm__v(self,leg=False, c='b'):
 
@@ -889,11 +919,12 @@ class simulation:
         ax.set_title('Total load on filament (mode: {}'.format(self.mode[0]))
         ax.set_xlabel('velocity [m/s]')
         ax.set_ylabel('Total load normalized')
+        ax.tick_params(direction = 'in', top = True, right = True)
         color=c
 
         ax.scatter(self.v_axis_runs, self.f_Sum_norm_axis_runs, color=color, s=5)
 
-        plt.savefig('f_norm__v.png', dpi=200)
+        plt.savefig('f_norm__v.pdf', dpi=200)
         print(self.f_Sum_norm_axis_runs)
 
 
@@ -902,9 +933,10 @@ class simulation:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Average velocity (mode: {})'.format(self.mode[0]))
+        ax.set_title('Average velocity, mode: {}'.format(self.mode[0]))
         ax.set_xlabel('Normalized load')
         ax.set_ylabel('velocity')
+        ax.tick_params(direction = 'in', top = True, right = True)
         #ax.set_yscale('log')
         color = c
 
@@ -912,7 +944,7 @@ class simulation:
         #self.f_Sum_norm_axis_runs schould be normalized by num of heads!
         ax.scatter(self.f_Sum_norm_axis_runs, self.v_axis_runs, color=color, s=5)
 
-        plt.savefig('v__f_norm.png', dpi=200)
+        plt.savefig('v__f_norm.pdf', dpi=200)
 
     def plot_pos(self, run, leg=False):
         if isinstance(run, int):
@@ -924,6 +956,7 @@ class simulation:
         ax.set_title('Position filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('time [s]')
         ax.set_ylabel('position')
+        ax.tick_params(direction = 'in', top = True, right = True)
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -932,7 +965,7 @@ class simulation:
                 ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
-        plt.savefig('Pos.png', dpi=200)
+        plt.savefig('Pos.pdf', dpi=200)
 
     def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
         if isinstance(run, int):
@@ -941,9 +974,10 @@ class simulation:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        ax.set_title('Load on filament, mode: {}'.format(self.mode[run[0]]))
+        ax.set_title('Total load on filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('velocity')
         ax.set_ylabel('load')
+        ax.tick_params(direction = 'in', top = True, right = True)
         val = 0
 
         for r in run:
@@ -953,7 +987,7 @@ class simulation:
             if leg: val = legval[run.index(r)]
             ax.scatter(self.v_axis_added[r], self.f_Sum_axis_added[r], color=color, s=5, label='{}={}'.format(lab, val))
         if leg: ax.legend()
-        plt.savefig('Sum_f_v.png', dpi=200)
+        plt.savefig('Sum_f_v.pdf', dpi=200)
 
     def plot_v_step(self, run, leg=False, c='b'):
         if isinstance(run, int):
@@ -965,6 +999,7 @@ class simulation:
         ax.set_title('Velocity of filament, mode: {}'.format(self.mode[run[0]]))
         ax.set_xlabel('jump')
         ax.set_ylabel('velocity')
+        ax.tick_params(direction = 'in', top = True, right = True)
 
         for r in run:
             if len(self.args_passed[r]) == 1:
@@ -973,4 +1008,4 @@ class simulation:
                 ax.plot(self.v_axis[r], color=c, label='{}={}'.format(lab, val))
             else: ax.plot(self.v_axis[r], color=c)
         if leg: ax.legend()
-        plt.savefig('v.png', dpi=200)
+        plt.savefig('v.pdf', dpi=200)
