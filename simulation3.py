@@ -564,6 +564,8 @@ class simulation:
                     n_att = sum(h.unitizeV(p))
 
                     s_i, p_i = s[index], p[index]
+                    f = h.forceV(s, p, self.d[run])
+                    sum_F = sum(f)
 
                     #verify the head selection: if RN < rate ratio (acutal over max), head is accepted, case v_pull = 0
                     if self.v_pull[run] == 0:
@@ -632,8 +634,8 @@ class simulation:
                     n_att_upd = sum(h.unitizeV(p))
 
                     #jump of filament due to attachment / detatchment ONLY if option != 'stiff'
-                    f = h.forceV(s, p, self.d[run])
-                    sum_F = sum(f)
+#                    f = h.forceV(s, p, self.d[run])
+#                    sum_F = sum(f)
 
                     if self.option != 'stiff':
                         pos_upd = (self.k_pull[run] * pos_pull - sum_F + n_att_upd * pos) / (n_att_upd + self.k_pull[run])
@@ -995,7 +997,7 @@ class simulation:
                 ax.plot(self.t[r], self.Pos_pull[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.Pos_pull[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
-        plt.savefig('Pos.pdf', dpi=200)
+        plt.savefig('Pos_pull.pdf', dpi=200)
 
     def plot_f_v_step(self, run, leg=False, legvar='', legval=[], c='b'):
         if isinstance(run, int):
