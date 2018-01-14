@@ -35,7 +35,7 @@ class simulation:
         if mode in ['vControl', 'fControl', 'springControl']: self.mode = [mode]
         else: raise ValueError('Wrong mode chosen')
         self.option = [kwargs.get('option', '')]
-        if not kwargs.get('option', '') in ['poly', 'step', 'const', 'loop', '']: raise ValueError('Wrong option chosen')
+        if not kwargs.get('option', '') in ['poly', 'step', 'const', 'loop', 'loopCatchNegative', 'loopCatchPositive', '']: raise ValueError('Wrong option chosen')
         self.args_passed = [kwargs]
 
         self.d = [kwargs.get('d', 2.)]
@@ -75,8 +75,8 @@ class simulation:
         if self.store.get('s'): self.S = [np.zeros((n_steps, n_heads))]
         self.store['pos'] = kwargs.get('pos_store',True)
         if self.store.get('pos') or self.mode[self.run] in ['fControl', 'springControl']: self.Pos = [np.zeros((n_steps,1))]
-        self.store['p'] = kwargs.get('p_store',True)
-        if self.store.get('pos_pull') or self.mode[self.run] in ['springControl']: self.Pos_pull = [np.zeros((n_steps,1))]
+        self.store['pos_pull'] = kwargs.get('pos_pull_store',True)
+        if self.store.get('pos_pull') and self.mode[self.run] in ['springControl']: self.Pos_pull = [np.zeros((n_steps,1))]
         self.store['p'] = kwargs.get('p_store',True)
         if self.store.get('p'): self.P = [np.zeros((n_steps, n_heads))]
         self.store['f'] = kwargs.get('f_store',True)
@@ -157,7 +157,7 @@ class simulation:
         if mode in ['vControl', 'fControl', 'springControl']: self.mode.append(kwargs.get('mode', self.mode[self.run]))
         else: raise ValueError('Wrong mode chosen')
         self.option.append(kwargs.get('option', self.option[self.run]))
-        if not self.option[-1] in ['poly', 'step', 'const', 'loop', '']: raise ValueError('Wrong option chosen')
+        if not self.option[-1] in ['poly', 'step', 'const', 'loop', 'loopCatchNegative', 'loopCatchPositive', '']: raise ValueError('Wrong option chosen')
         self.args_passed.append(kwargs)
 
         self.d.append(kwargs.get('d', self.d[self.run]))
@@ -200,7 +200,7 @@ class simulation:
         #append new slots for storage of desired Variables out of s,p,f,sum_F
         if self.store.get('s'): self.S.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('pos') or self.mode[self.run] in ['fControl', 'springControl']: self.Pos.append(np.zeros((self.n_steps[self.run],1)))
-        if self.store.get('pos_pull') or self.mode[self.run] in ['springControl']: self.Pos_pull.append(np.zeros((self.n_steps[self.run],1)))
+        if self.store.get('pos_pull') and self.mode[self.run] in ['springControl']: self.Pos_pull.append(np.zeros((self.n_steps[self.run],1)))
         if self.store.get('p'): self.P.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('f'): self.F.append(np.zeros((self.n_steps[run], self.n_heads[run])))
         if self.store.get('sum_f'): self.sum_F.append(np.zeros(self.n_steps[run]))
@@ -322,7 +322,7 @@ class simulation:
             sum_F = 0.
             pos = kwargs.get('pos_filament', 0.)
             pos_pull = kwargs.get('pos_pull', 0.)
-            t = 0.
+            t = self.t0[run]
 
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             #~~~~~~~~~~~~~~~~SETUP INITIAL CONDITIONS BEFORE ITERATION~~~~~~~~~~~~~~~~~~~~~~
@@ -361,7 +361,7 @@ class simulation:
                 print('k_min_max:', k_min_max)
                 k_plus_max = h.get_max_k_plus_sum(self.d[run], self.bta[run], self.k[run], self.k_on[run], self.n_neighbours[run])
                 print('k_plus_max:', k_plus_max)
-                if not self.option[run] == 'loop':
+                if not self.option[run] in ['loop', 'loopCatchNegative', 'loopCatchPositive']:
                     #stretching to desired force
                     f = h.force(s, p, self.d[run])
 
@@ -369,7 +369,7 @@ class simulation:
                     print(sum_F)
                     n_att = sum(h.unitizeV(p))
                     print(n_att)
-                    displ = + sum_F / (n_att + self.k_pull[run])
+                    displ = - sum_F / (n_att + self.k_pull[run])
                     print(displ)
                     s = h.translateV(s, displ)
                     pos += displ
@@ -400,6 +400,7 @@ class simulation:
                 #store Variables s, p
                 if self.store.get('s'): self.S[run][i] = s
                 if self.store.get('pos'): self.Pos[run][i] = pos
+                if self.store.get('pos_pull'): self.Pos_pull[run][i] = pos_pull
                 if self.store.get('p'): self.P[run][i] = p
                 if self.store.get('f'): self.F[run][i] = f
                 if self.store.get('sum_f'): self.sum_F[run][i] = sum_F
@@ -490,7 +491,7 @@ class simulation:
                     #updating the elapsed time
                     t += tau
                     if math.isnan(t):
-                        ValueError('tau is nan')
+                        raise ValueError('tau is nan')
                     self.t[run][i] = t
 
                     #check again, if connection broke
@@ -649,6 +650,11 @@ class simulation:
                         self.breakindex[run] = i
                         break
 
+                    if self.option[run] == 'loopCatchNegative' and pos_pull < 0:
+                        self.v_pull[run] = 0
+                    if self.option[run] == 'loopCatchPositive' and pos_pull > 0:
+                        self.v_pull[run] = 0
+
                 #///////////////////////////////////////////////////////////////////////////////
                 #~END~~~~~~~~~~~~~~~~SPRING CONTROL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 #///////////////////////////////////////////////////////////////////////////////
@@ -696,6 +702,9 @@ class simulation:
                 if self.store.get('pos'):
                     Pos_out = np.concatenate((t_w, self.Pos[run]), axis=1)
                     np.savetxt('Pos_{}_{}.dat'.format(run, self.n_sim[run]), Pos_out, header='time, Position of filament')
+                if self.store.get('pos_pull'):
+                    Pos_pull_out = np.concatenate((t_w, self.Pos_pull[run]), axis=1)
+                    np.savetxt('Pos_pull{}_{}.dat'.format(run, self.n_sim[run]), Pos_pull_out, header='time, Position of filament')
                 if self.store.get('p'):
                     if self.mode[run] == 'vControl' and self.option[run] == 'const':
                         np.savetxt('p_{}prescribed_{}_Run{}.dat'.format(self.mode[run][0], self.v[run], self.n_sim[run]), self.P[run], header='time, force applied by each head')
@@ -744,7 +753,7 @@ class simulation:
                         f.write('Nrealisation kon timeconstant k0 energyconstant d0 delta_t0 neighbourcriterion n initialpvector (pdetached, pattached)\n')
                         f.write('{} {} {} {} {}	{}	{} {} {}\n'.format(self.n_steps[run], self.k_on[run], self.k[run], self.bta[run], self.d[run], self.d_t[run], self.th[run], self.n_heads[run], self.probabilities_p[run]))
 
-        list_to_be_returned = [s, p, pos]
+        list_to_be_returned = [s, p, t, pos]
         if self.mode[run] == 'springControl': list_to_be_returned.append(pos_pull)
         return list_to_be_returned
 
@@ -964,6 +973,27 @@ class simulation:
                 val = self.args_passed[r][lab]
                 ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
             else: ax.plot(self.t[r], self.Pos[r], linewidth=1.0, linestyle="-")
+        if leg: ax.legend()
+        plt.savefig('Pos.pdf', dpi=200)
+
+    def plot_pos_pull(self, run, leg=False):
+        if isinstance(run, int):
+            run = [run]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.set_title('Position puller, mode: {}'.format(self.mode[run[0]]))
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('position')
+        ax.tick_params(direction = 'in', top = True, right = True)
+
+        for r in run:
+            if len(self.args_passed[r]) == 1:
+                lab = list(self.args_passed[r])[0]
+                val = self.args_passed[r][lab]
+                ax.plot(self.t[r], self.Pos_pull[r], linewidth=1.0, linestyle="-", label='{}={}'.format(lab, val))
+            else: ax.plot(self.t[r], self.Pos_pull[r], linewidth=1.0, linestyle="-")
         if leg: ax.legend()
         plt.savefig('Pos.pdf', dpi=200)
 

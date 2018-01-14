@@ -32,7 +32,7 @@ stiffness_of_drag_spring = 5.
 k_on = 10.
 neighborhood_criterion = 0.01
 start_time = 0.
-distance_between_binding_sites = 2
+distance_between_binding_sites = 2.
 random.seed(121155)
 
 
@@ -43,7 +43,7 @@ step_max_val = 15
 #number of steps in between
 step_n_jumps = 5
 
-repetitions_with_same_parameters = 1																																					#|
+repetitions_with_same_parameters = 5																							#|
 
 #configure mulitprocessing TO BE USED WITH CAUTION ----> RAM OVERFLOW
 n_cores = 8
@@ -79,20 +79,24 @@ if __name__ == '__main__':
                         d = distance_between_binding_sites,
                         k_pull = stiffness_of_drag_spring)
 
-    velocities = [10,0,-10,0]
+    for i in range(repetitions_with_same_parameters):
+        velocities = [10,0,-10,0]
+        t_end  = 0.
+        sim.add_run(v_pull=velocities[0], t0=0.)
+        s, p, t_end, pos, pos_pull = sim.start_run(1 + 4*i)
+        sim.add_run(option='loop', v_pull=velocities[1], s=s, p=p, pos_filament=pos, pos_pull=pos_pull, t0=t_end)
+        s, p, t_end, pos, pos_pull = sim.start_run(2 + 4*i, v_pull=velocities[1], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
+        #more steps to ensure that puller passes 0
+        n_iterations_per_simulation_extended = int(1.25*n_iterations_per_simulation)
+        sim.add_run(n_steps=n_iterations_per_simulation_extended, option='loopCatchNegative', v_pull=velocities[2], s=s, p=p, pos_filament=pos, pos_pull=pos_pull, t0=t_end)
+        s, p, t_end, pos, pos_pull = sim.start_run(3 + 4*i, v_pull=velocities[2], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
+        sim.add_run(option='loop', v_pull=velocities[3], s=s, p=p, pos_filament=pos, pos_pull=pos_pull, t0=t_end)
+        s, p, t_end, pos, pos_pull = sim.start_run(4 + 4*i, v_pull=velocities[3], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
 
-    sim.add_run(v_pull=velocities[0])
-    s, p, pos, pos_pull = sim.start_run(1)
-    sim.add_run(option='loop', v_pull=velocities[1], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-    s, p, pos, pos_pull = sim.start_run(2, v_pull=velocities[1], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-    sim.add_run(option='loop', v_pull=velocities[2], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-    s, p, pos, pos_pull = sim.start_run(3, v_pull=velocities[2], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-    sim.add_run(option='loop', v_pull=velocities[3], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-    s, p, pos, pos_pull = sim.start_run(4, v_pull=velocities[3], s=s, p=p, pos_filament=pos, pos_pull=pos_pull)
-
-    n=[1,2,3,4]
+    n=list(range(4 * repetitions_with_same_parameters + 1))[1:]
 
     sim.plot_pos(n)
+    sim.plot_pos_pull(n)
     sim.plot_p(n)
     sim.plot_f(n)
 ###########################################
