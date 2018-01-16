@@ -38,11 +38,11 @@ random.seed(121155)
 ############################################
 #####CASE OPTION CONST######################
 #scan for load between
-step_min_val = 5.5
+step_min_val = 17
 #and
-step_max_val = 15
+step_max_val = 45
 #number of steps in between
-step_n_jumps = 1
+step_n_jumps = 14
 
 #####CASE OPTION POLY#######################
 coeff_of_velocity_polynomial = [[5, 0.], [10, 0.]]
@@ -87,8 +87,9 @@ if __name__ == '__main__':
 
 
     if option == 'const':
-        velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
-#        velocities = [10]
+        if step_n_jumps == 0: velocities = [step_min_val for i in range(step_n_jumps + 1)]
+        else: velocities = [i * (step_max_val - step_min_val) / step_n_jumps + step_min_val for i in range(step_n_jumps + 1)]
+
         for r in range(repetitions_with_same_parameters):
             for v in velocities:
                 sim.add_run(v=v, n_sim=r)

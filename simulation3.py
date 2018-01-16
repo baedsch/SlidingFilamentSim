@@ -654,6 +654,7 @@ class simulation:
 
                     if self.option[run] == 'loopCatchNegative' and pos_pull < 0:
                         self.v_pull[run] = 0
+                        print(pos_pull, 'This is pos_pull')
                     if self.option[run] == 'loopCatchPositive' and pos_pull > 0:
                         self.v_pull[run] = 0
 
