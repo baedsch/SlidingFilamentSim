@@ -75,7 +75,7 @@ class simulation:
         if self.store.get('s'): self.S = [np.zeros((n_steps, n_heads))]
         self.store['pos'] = kwargs.get('pos_store',True)
         if self.store.get('pos') or self.mode[self.run] in ['fControl', 'springControl']: self.Pos = [np.zeros((n_steps,1))]
-        self.store['pos_pull'] = kwargs.get('pos_pull_store',True)
+        self.store['pos_pull'] = kwargs.get('pos_pull_store', False)
         if self.store.get('pos_pull') and self.mode[self.run] in ['springControl']: self.Pos_pull = [np.zeros((n_steps,1))]
         self.store['p'] = kwargs.get('p_store',True)
         if self.store.get('p'): self.P = [np.zeros((n_steps, n_heads))]
