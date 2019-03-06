@@ -4,8 +4,6 @@ This software simulates *sliding filaments* [https://en.wikipedia.org/wiki/Slidi
 
 Supervised by [https://github.com/FWijanto/SlidingFilamentSimulation](https://github.com/FWijanto/SlidingFilamentSimulation)
 
-For further information just create an issue or email me :-)
-
 ## How to use:
 
 ### **Prepare** the script
